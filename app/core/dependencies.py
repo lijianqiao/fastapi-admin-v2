@@ -15,6 +15,13 @@ from fastapi.security import OAuth2PasswordBearer
 
 from app.core.exceptions import forbidden, unauthorized
 from app.core.security import decode_token
+from app.dao.log import AuditLogDAO
+from app.dao.permission import PermissionDAO
+from app.dao.role import RoleDAO
+from app.dao.role_permission import RolePermissionDAO
+from app.dao.user import UserDAO
+from app.dao.user_role import UserRoleDAO
+from app.services import AuditLogService, AuthService, PermissionService, RoleService, UserService
 from app.utils.logger import logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -57,4 +64,80 @@ def has_permission(required: str):
     return _checker
 
 
-__all__ = ["get_current_user_id", "has_permission", "oauth2_scheme"]
+# ---------- DAO Providers ----------
+def get_user_dao() -> UserDAO:
+    return UserDAO()
+
+
+def get_user_role_dao() -> UserRoleDAO:
+    return UserRoleDAO()
+
+
+def get_role_dao() -> RoleDAO:
+    return RoleDAO()
+
+
+def get_role_permission_dao() -> RolePermissionDAO:
+    return RolePermissionDAO()
+
+
+def get_permission_dao() -> PermissionDAO:
+    return PermissionDAO()
+
+
+def get_audit_log_dao() -> AuditLogDAO:
+    return AuditLogDAO()
+
+
+# ---------- Service Providers ----------
+def get_user_service(
+    user_dao: UserDAO = Depends(get_user_dao),
+    user_role_dao: UserRoleDAO = Depends(get_user_role_dao),
+) -> UserService:
+    return UserService(user_dao=user_dao, user_role_dao=user_role_dao)
+
+
+def get_role_service(
+    role_dao: RoleDAO = Depends(get_role_dao),
+    role_perm_dao: RolePermissionDAO = Depends(get_role_permission_dao),
+    perm_dao: PermissionDAO = Depends(get_permission_dao),
+) -> RoleService:
+    return RoleService(role_dao=role_dao, role_perm_dao=role_perm_dao, perm_dao=perm_dao)
+
+
+def get_permission_service(
+    perm_dao: PermissionDAO = Depends(get_permission_dao),
+) -> PermissionService:
+    return PermissionService(perm_dao=perm_dao)
+
+
+def get_audit_log_service(
+    dao: AuditLogDAO = Depends(get_audit_log_dao),
+) -> AuditLogService:
+    return AuditLogService(dao)
+
+
+def get_auth_service(
+    user_dao: UserDAO = Depends(get_user_dao),
+) -> AuthService:
+    return AuthService(user_dao=user_dao)
+
+
+__all__ = [
+    "get_current_user_id",
+    "has_permission",
+    "oauth2_scheme",
+    # dao providers
+    "get_user_dao",
+    "get_user_role_dao",
+    "get_role_dao",
+    "get_role_permission_dao",
+    "get_permission_dao",
+    "get_audit_log_dao",
+    # service providers
+    "get_user_service",
+    "get_role_service",
+    "get_permission_service",
+    "get_audit_log_service",
+    "get_auth_service",
+]

@@ -1,0 +1,73 @@
+"""
+@Author: li
+@Email: lijianqiao2906@live.com
+@FileName: audit.py
+@DateTime: 2025/08/21 12:10:00
+@Docs: 审计日志装饰器与工具
+"""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Awaitable, Callable
+from typing import Any, ParamSpec, TypeVar
+
+from app.dao.log import AuditLogDAO
+from app.utils.logger import logger
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def log_operation(
+    *,
+    action: str,
+    target_getter: Callable[[tuple[Any, ...], dict[str, Any]], int | None] | None = None,
+) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+    """
+    审计日志装饰器：记录服务层操作
+
+    - action: 操作动作标识（如 "user:create"）
+    - target_getter: 从 (args, kwargs) 中提取 target_id 的函数，可选
+    - actor_id: 从被调用函数的 kwargs 中读取（key: actor_id），缺省为 0
+    """
+
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            started_at = time.monotonic()
+            actor_id = int(kwargs.get("actor_id") or 0)
+            target_id = target_getter(args, kwargs) if target_getter else None
+            dao = AuditLogDAO()
+            error_text: str | None = None
+            status_code: int | None = 200
+            try:
+                result = await func(*args, **kwargs)
+                return result
+            except Exception as exc:
+                error_text = str(exc)
+                status_code = 500
+                logger.exception(f"操作失败: action={action}, actor_id={actor_id}, target_id={target_id}")
+                raise
+            finally:
+                latency_ms = int((time.monotonic() - started_at) * 1000)
+                try:
+                    await dao.write(
+                        {
+                            "actor_id": actor_id,
+                            "action": action,
+                            "target_id": target_id,
+                            "status": status_code,
+                            "latency_ms": latency_ms,
+                            "trace_id": "-",
+                            "error": error_text,
+                        }
+                    )
+                except Exception:  # noqa: BLE001 - 审计失败仅记录日志
+                    logger.exception("写入审计日志失败")
+
+        return wrapper
+
+    return decorator
+
+
+__all__ = ["log_operation"]

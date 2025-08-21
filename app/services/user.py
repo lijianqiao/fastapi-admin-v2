@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.security import hash_password
 from app.dao.user import UserDAO
@@ -15,6 +16,7 @@ from app.dao.user_role import UserRoleDAO
 from app.schemas.response import Page
 from app.schemas.user import UserBindIn, UserCreate, UserOut, UserQuery, UsersBindIn, UserUpdate
 from app.services.base import BaseService
+from app.utils.audit import log_operation
 
 
 class UserService(BaseService):
@@ -22,7 +24,8 @@ class UserService(BaseService):
         super().__init__(user_dao or UserDAO())
         self.user_role_dao = user_role_dao or UserRoleDAO()
 
-    async def create_user(self, data: UserCreate) -> UserOut:
+    @log_operation(action=Perm.USER_CREATE)
+    async def create_user(self, data: UserCreate, *, actor_id: int | None = None) -> UserOut:
         # 唯一性预校验
         if await self.dao.exists(username=data.username):
             raise conflict("用户名已存在")
@@ -38,7 +41,8 @@ class UserService(BaseService):
         user = await self.dao.create(to_create)
         return UserOut.model_validate(user)
 
-    async def update_user(self, user_id: int, version: int, data: UserUpdate) -> int:
+    @log_operation(action=Perm.USER_UPDATE)
+    async def update_user(self, user_id: int, version: int, data: UserUpdate, *, actor_id: int | None = None) -> int:
         update_map: dict[str, object] = {}
         if data.username is not None:
             update_map["username"] = data.username
@@ -72,17 +76,22 @@ class UserService(BaseService):
             items=[UserOut.model_validate(x) for x in items], total=total, page=page, page_size=page_size
         )
 
-    async def disable_users(self, ids: list[int]) -> int:
+    @log_operation(action=Perm.USER_DISABLE)
+    async def disable_users(self, ids: list[int], *, actor_id: int | None = None) -> int:
         return await self.dao.disable_users(ids)
 
-    async def bind_roles(self, data: UserBindIn) -> None:
+    @log_operation(action=Perm.USER_BIND_ROLES)
+    async def bind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> None:
         await self.user_role_dao.bind_roles(data.user_id, data.role_ids)
 
-    async def bind_roles_batch(self, data: UsersBindIn) -> None:
+    @log_operation(action=Perm.USER_BIND_ROLES_BATCH)
+    async def bind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> None:
         await self.user_role_dao.bind_roles_to_users(data.user_ids, data.role_ids)
 
-    async def unbind_roles(self, data: UserBindIn) -> int:
+    @log_operation(action=Perm.USER_UNBIND_ROLES)
+    async def unbind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> int:
         return await self.user_role_dao.unbind_roles(data.user_id, data.role_ids)
 
-    async def unbind_roles_batch(self, data: UsersBindIn) -> int:
+    @log_operation(action=Perm.USER_UNBIND_ROLES_BATCH)
+    async def unbind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> int:
         return await self.user_role_dao.unbind_roles_from_users(data.user_ids, data.role_ids)
