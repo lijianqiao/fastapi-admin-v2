@@ -35,3 +35,8 @@ class UserRoleDAO(BaseDAO[UserRole]):
 
     async def list_roles_of_user(self, user_id: int) -> list[UserRole]:
         return await self.alive().filter(user_id=user_id).all()
+
+    async def list_by_user_ids(self, user_ids: Sequence[int]) -> list[UserRole]:
+        if not user_ids:
+            return []
+        return await self.alive().filter(user_id__in=list(user_ids)).all()

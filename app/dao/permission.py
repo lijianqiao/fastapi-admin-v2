@@ -24,5 +24,10 @@ class PermissionDAO(BaseDAO[Permission]):
     async def disable_permissions(self, perm_ids: Sequence[int]) -> int:
         return await self.alive().filter(id__in=list(perm_ids)).update(is_active=False)
 
+    async def list_by_ids(self, ids: Sequence[int]) -> list[Permission]:
+        if not ids:
+            return []
+        return await self.alive().filter(id__in=list(ids)).all()
+
     async def list_by_codes(self, codes: Sequence[str]) -> list[Permission]:
         return await self.alive().filter(code__in=list(codes)).all()

@@ -14,6 +14,7 @@ from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 
 from app.core.exceptions import forbidden, unauthorized
+from app.core.permissions import user_has_permissions
 from app.core.security import decode_token
 from app.dao.log import AuditLogDAO
 from app.dao.permission import PermissionDAO
@@ -55,8 +56,7 @@ def has_permission(required: str):
         trace_id = request.headers.get("X-Request-ID") or "-"
         log = logger.bind(trace_id=trace_id)
 
-        # TODO: 替换为 Redis + DB 权限校验
-        allowed = True
+        allowed = await user_has_permissions(user_id, [required])
         if not allowed:
             log.warning(f"权限不足：user_id={user_id}, required={required}, path={request.url.path}")
             raise forbidden("权限不足")

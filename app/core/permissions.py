@@ -3,18 +3,70 @@
 @Email: lijianqiao2906@live.com
 @FileName: permissions.py
 @DateTime: 2025/08/21 12:10:00
-@Docs: 权限检查工具（占位：后续接入 Redis 缓存 + DB）
+@Docs: 权限检查工具
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Final
+
+from app.dao.permission import PermissionDAO
+from app.dao.role_permission import RolePermissionDAO
+from app.dao.user_role import UserRoleDAO
+from app.utils.cache_manager import CacheManager, get_cache_manager
+
+PERM_VERSION_KEY: Final[str] = "rbac:perm:version"
+
+
+def _cache_key(user_id: int, version: int) -> str:
+    return f"rbac:perm:v{version}:u:{user_id}"
+
+
+async def _get_perm_version(cm: CacheManager) -> int:
+    return await cm.get_version(PERM_VERSION_KEY, default=1)
+
+
+async def bump_perm_version() -> int:
+    cm = get_cache_manager()
+    return await cm.bump_version(PERM_VERSION_KEY)
+
+
+async def _load_user_permissions_from_db(user_id: int) -> set[str]:
+    # 获取用户角色
+    user_role_dao = UserRoleDAO()
+    role_perm_dao = RolePermissionDAO()
+    perm_dao = PermissionDAO()
+    user_roles = await user_role_dao.list_roles_of_user(user_id)
+    role_ids = [ur.role_id for ur in user_roles]
+    if not role_ids:
+        return set()
+    # 角色-权限关系
+    rels = await role_perm_dao.list_by_role_ids(role_ids)
+    perm_ids = [rp.permission_id for rp in rels]
+    if not perm_ids:
+        return set()
+    # 权限code集合
+    perms = await perm_dao.list_by_ids(perm_ids)
+    return {p.code for p in perms}
 
 
 async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
-    # TODO: 接入 Redis 权限缓存与 DB 聚合权限
-    # 现阶段默认放行（请在集成 RBAC 时替换实现）
-    return True
+    cm = get_cache_manager()
+    version = await _get_perm_version(cm)
+    key = _cache_key(user_id, version)
+    # 优先缓存
+    if await cm.exists(key):
+        user_perm_set = await cm.smembers(key)
+    else:
+        # 回源
+        user_perm_set = await _load_user_permissions_from_db(user_id)
+        if user_perm_set:
+            await cm.sadd(key, *list(user_perm_set))
+            await cm.expire(key, 1800)
+    # 检查
+    req_set = set(required)
+    return req_set.issubset(user_perm_set)
 
 
-__all__ = ["user_has_permissions"]
+__all__ = ["user_has_permissions", "bump_perm_version"]

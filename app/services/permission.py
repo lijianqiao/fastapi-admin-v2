@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
+from app.core.permissions import bump_perm_version
 from app.dao.permission import PermissionDAO
 from app.schemas.permission import PermissionCreate, PermissionOut, PermissionUpdate
 from app.schemas.response import Page
@@ -26,6 +27,7 @@ class PermissionService(BaseService):
         if await self.dao.exists(code=data.code):
             raise conflict("权限编码已存在")
         perm = await self.dao.create(data.model_dump())
+        await bump_perm_version()
         return PermissionOut.model_validate(perm)
 
     @log_operation(action=Perm.PERMISSION_UPDATE)
@@ -38,6 +40,7 @@ class PermissionService(BaseService):
         affected = await self.dao.update_with_version(perm_id, version, update_map)
         if affected == 0:
             raise conflict("更新冲突或记录不存在")
+        await bump_perm_version()
         return affected
 
     async def get_permission(self, perm_id: int) -> PermissionOut:
@@ -54,4 +57,7 @@ class PermissionService(BaseService):
 
     @log_operation(action=Perm.PERMISSION_DISABLE)
     async def disable_permissions(self, ids: list[int], *, actor_id: int | None = None) -> int:
-        return await PermissionDAO().disable_permissions(ids)
+        affected = await PermissionDAO().disable_permissions(ids)
+        if affected:
+            await bump_perm_version()
+        return affected

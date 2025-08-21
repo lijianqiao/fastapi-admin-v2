@@ -8,13 +8,11 @@
 
 from __future__ import annotations
 
-from typing import Generic
-
 from tortoise import Model
 
 from app.dao.base import BaseDAO
 
 
-class BaseService[ModelType: Model](Generic[ModelType]):
+class BaseService[ModelType: Model]:
     def __init__(self, dao: BaseDAO[ModelType]) -> None:
         self.dao = dao

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
+from app.core.permissions import bump_perm_version
 from app.dao.permission import PermissionDAO
 from app.dao.role import RoleDAO
 from app.dao.role_permission import RolePermissionDAO
@@ -67,6 +68,7 @@ class RoleService(BaseService):
     @log_operation(action=Perm.ROLE_BIND_PERMISSIONS)
     async def bind_permissions(self, data: RoleBindIn, *, actor_id: int | None = None) -> None:
         await self.role_perm_dao.bind_permissions(data.role_id, data.target_ids)
+        await bump_perm_version()
 
     async def list_permissions(self, role_id: int) -> list[PermissionOut]:
         rels = await self.role_perm_dao.list_permissions_of_role(role_id)
@@ -79,11 +81,18 @@ class RoleService(BaseService):
     @log_operation(action=Perm.ROLE_BIND_PERMISSIONS_BATCH)
     async def bind_permissions_batch(self, data: RolesBindIn, *, actor_id: int | None = None) -> None:
         await self.role_perm_dao.bind_permissions_to_roles(data.role_ids, data.permission_ids)
+        await bump_perm_version()
 
     @log_operation(action=Perm.ROLE_UNBIND_PERMISSIONS)
     async def unbind_permissions(self, data: RoleBindIn, *, actor_id: int | None = None) -> int:
-        return await self.role_perm_dao.unbind_permissions_from_roles([data.role_id], data.target_ids)
+        affected = await self.role_perm_dao.unbind_permissions_from_roles([data.role_id], data.target_ids)
+        if affected:
+            await bump_perm_version()
+        return affected
 
     @log_operation(action=Perm.ROLE_UNBIND_PERMISSIONS_BATCH)
     async def unbind_permissions_batch(self, data: RolesBindIn, *, actor_id: int | None = None) -> int:
-        return await self.role_perm_dao.unbind_permissions_from_roles(data.role_ids, data.permission_ids)
+        affected = await self.role_perm_dao.unbind_permissions_from_roles(data.role_ids, data.permission_ids)
+        if affected:
+            await bump_perm_version()
+        return affected

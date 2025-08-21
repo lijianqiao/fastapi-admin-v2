@@ -38,9 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if environment not in ("development", "testing", "production"):
         environment = "development"
     setup_logger(cast(Literal["development", "testing", "production"], environment))
-    setup_middlewares(app)
-    await init_database()
-    logger.info("应用启动完成")
     await init_database()
     logger.info("应用启动完成")
     try:

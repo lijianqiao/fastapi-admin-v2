@@ -24,8 +24,12 @@ def _ensure_log_dir(path: str) -> None:
 
 
 def setup_logger(environment: Literal["development", "testing", "production"] = "development") -> None:
-    global logger
     logger.remove()
+
+    # 为所有日志记录补齐 trace_id，避免 KeyError
+    def _patch(record: dict) -> None:  # type: ignore[override]
+        record.setdefault("extra", {})
+        record["extra"].setdefault("trace_id", "-")
 
     # 控制台输出（开发环境更友好）
     logger.add(
@@ -52,8 +56,8 @@ def setup_logger(environment: Literal["development", "testing", "production"] = 
             serialize=True,  # JSON 输出
         )
 
-    # 默认附加 trace_id 字段，避免格式化 KeyError
-    logger = logger.bind(trace_id="-")
+    # 通过 patcher 统一补全 extra 字段
+    logger.configure(patcher=_patch)
 
 
 __all__ = ["logger", "setup_logger"]

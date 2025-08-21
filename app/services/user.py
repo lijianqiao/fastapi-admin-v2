@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
+from app.core.permissions import bump_perm_version
 from app.core.security import hash_password
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
@@ -83,15 +84,23 @@ class UserService(BaseService):
     @log_operation(action=Perm.USER_BIND_ROLES)
     async def bind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> None:
         await self.user_role_dao.bind_roles(data.user_id, data.role_ids)
+        await bump_perm_version()
 
     @log_operation(action=Perm.USER_BIND_ROLES_BATCH)
     async def bind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> None:
         await self.user_role_dao.bind_roles_to_users(data.user_ids, data.role_ids)
+        await bump_perm_version()
 
     @log_operation(action=Perm.USER_UNBIND_ROLES)
     async def unbind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> int:
-        return await self.user_role_dao.unbind_roles(data.user_id, data.role_ids)
+        affected = await self.user_role_dao.unbind_roles(data.user_id, data.role_ids)
+        if affected:
+            await bump_perm_version()
+        return affected
 
     @log_operation(action=Perm.USER_UNBIND_ROLES_BATCH)
     async def unbind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> int:
-        return await self.user_role_dao.unbind_roles_from_users(data.user_ids, data.role_ids)
+        affected = await self.user_role_dao.unbind_roles_from_users(data.user_ids, data.role_ids)
+        if affected:
+            await bump_perm_version()
+        return affected

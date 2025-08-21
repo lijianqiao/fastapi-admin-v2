@@ -30,6 +30,11 @@ class RolePermissionDAO(BaseDAO[RolePermission]):
     async def list_permissions_of_role(self, role_id: int) -> list[RolePermission]:
         return await self.alive().filter(role_id=role_id).all()
 
+    async def list_by_role_ids(self, role_ids: Sequence[int]) -> list[RolePermission]:
+        if not role_ids:
+            return []
+        return await self.alive().filter(role_id__in=list(role_ids)).all()
+
     async def bind_permissions_to_roles(self, role_ids: Sequence[int], permission_ids: Sequence[int]) -> None:
         rows = [{"role_id": rid, "permission_id": pid} for rid in role_ids for pid in permission_ids]
         if rows:
