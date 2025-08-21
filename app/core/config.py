@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     API_PREFIX: str = Field(default="/api")
     DEBUG: bool = Field(default=True)
     ENVIRONMENT: str = Field(default="development")
+    # 日志
+    APP_LOG_PATH: str | None = Field(default=None)
 
     # 服务器
     HOST: str = Field(default="0.0.0.0")
@@ -50,6 +52,12 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_SECONDS: int = Field(default=60 * 30)  # 30分钟
     REFRESH_TOKEN_EXPIRE_SECONDS: int = Field(default=60 * 60 * 24 * 7)  # 7天
+
+    # 超级管理员配置
+    SUPERUSER_USERNAME: str = Field(default="admin")
+    SUPERUSER_PASSWORD: str = Field(default="admin@123")
+    SUPERUSER_EMAIL: str = Field(default="admin@example.com")
+    SUPERUSER_PHONE: str = Field(default="13800000000")
 
 
 @lru_cache(maxsize=1)

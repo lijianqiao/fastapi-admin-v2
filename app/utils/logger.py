@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime
 from typing import Literal
 
 from loguru import logger
+
+from app.core.config import get_settings
 
 
 def _ensure_log_dir(path: str) -> None:
@@ -66,19 +69,27 @@ def setup_logger(environment: Literal["development", "testing", "production"] = 
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level}</level> | <cyan>{extra[trace_id]}</cyan> | <level>{message}</level>",
     )
 
-    # 生产环境文件日志（滚动 + 保留）
-    if environment == "production":
-        log_path = os.getenv("APP_LOG_PATH", "logs/app.log")
-        _ensure_log_dir(log_path)
-        logger.add(
-            log_path,
-            rotation="10 MB",
-            retention="30 days",
-            encoding="utf-8",
-            enqueue=True,
-            level="INFO",
-            serialize=True,  # JSON 输出
-        )
+    # 文件日志（所有环境都写入文件；生产环境使用 JSON，其他环境为文本）
+    # 文件名格式：logs/app_YYYY_MM_DD.log
+    settings = get_settings()
+    configured_path = settings.APP_LOG_PATH
+    if configured_path:
+        # 支持 {date} 模板
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        log_path = configured_path.replace("{date}", date_str)
+    else:
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        log_path = f"logs/app_{date_str}.log"
+    _ensure_log_dir(log_path)
+    logger.add(
+        log_path,
+        rotation="10 MB",
+        retention="15 days",
+        encoding="utf-8",
+        enqueue=True,
+        level="DEBUG" if environment == "development" else "INFO",
+        serialize=environment == "production",  # 生产环境输出 JSON
+    )
 
     # 通过 patcher 统一补全 extra 字段
     logger.configure(patcher=_patch)
