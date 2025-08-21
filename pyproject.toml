@@ -1,0 +1,46 @@
+[project]
+name = "fastapi-admin"
+version = "0.1.0"
+description = "基于 FastAPI 的后台管理系统"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "lijianqiao", email = "lijianqiao2906@live.com" }]
+dependencies = [
+    "aerich>=0.9.1",
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.116.1",
+    "loguru>=0.7.3",
+    "passlib[bcrypt]>=1.7.4",
+    "psutil>=7.0.0",
+    "pydantic-settings>=2.10.1",
+    "python-jose[cryptography]>=3.5.0",
+    "redis>=6.4.0",
+    "tortoise-orm>=0.25.1",
+    "uvicorn[standard]>=0.35.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+exclude = [".git", "__pycache__", ".venv", ".vscode"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "W191"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.aerich]
+tortoise_orm = "app.core.database.TORTOISE_ORM"
+location = "./migrations"
+src_folder = "./."
