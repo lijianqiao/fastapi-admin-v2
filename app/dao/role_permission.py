@@ -29,3 +29,15 @@ class RolePermissionDAO(BaseDAO[RolePermission]):
 
     async def list_permissions_of_role(self, role_id: int) -> list[RolePermission]:
         return await self.alive().filter(role_id=role_id).all()
+
+    async def bind_permissions_to_roles(self, role_ids: Sequence[int], permission_ids: Sequence[int]) -> None:
+        rows = [{"role_id": rid, "permission_id": pid} for rid in role_ids for pid in permission_ids]
+        if rows:
+            await self.bulk_create(rows)
+
+    async def unbind_permissions_from_roles(self, role_ids: Sequence[int], permission_ids: Sequence[int]) -> int:
+        return (
+            await self.alive()
+            .filter(role_id__in=list(role_ids), permission_id__in=list(permission_ids))
+            .update(is_deleted=True)
+        )

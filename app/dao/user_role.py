@@ -25,5 +25,13 @@ class UserRoleDAO(BaseDAO[UserRole]):
     async def unbind_roles(self, user_id: int, role_ids: Sequence[int]) -> int:
         return await self.alive().filter(user_id=user_id, role_id__in=list(role_ids)).update(is_deleted=True)
 
+    async def bind_roles_to_users(self, user_ids: Sequence[int], role_ids: Sequence[int]) -> None:
+        rows = [{"user_id": uid, "role_id": rid} for uid in user_ids for rid in role_ids]
+        if rows:
+            await self.bulk_create(rows)
+
+    async def unbind_roles_from_users(self, user_ids: Sequence[int], role_ids: Sequence[int]) -> int:
+        return await self.alive().filter(user_id__in=list(user_ids), role_id__in=list(role_ids)).update(is_deleted=True)
+
     async def list_roles_of_user(self, user_id: int) -> list[UserRole]:
         return await self.alive().filter(user_id=user_id).all()

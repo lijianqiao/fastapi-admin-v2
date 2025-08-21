@@ -41,3 +41,8 @@ class RoleBindIn(BaseModel):
 
 class RoleIdsIn(BaseModel):
     ids: list[int] = Field(min_items=1)
+
+
+class RolesBindIn(BaseModel):
+    role_ids: list[int] = Field(min_items=1)
+    permission_ids: list[int] = Field(min_items=1)

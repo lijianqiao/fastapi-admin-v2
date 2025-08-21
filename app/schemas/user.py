@@ -50,3 +50,8 @@ class UserIdsIn(BaseModel):
 class UserBindIn(BaseModel):
     user_id: int
     role_ids: list[int] = Field(min_items=1)
+
+
+class UsersBindIn(BaseModel):
+    user_ids: list[int] = Field(min_items=1)
+    role_ids: list[int] = Field(min_items=1)
