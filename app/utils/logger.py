@@ -16,6 +16,14 @@ from loguru import logger
 
 
 def _ensure_log_dir(path: str) -> None:
+    """确保日志文件目录存在。
+
+    Args:
+        path (str): 日志文件路径。
+
+    Returns:
+        None: 无返回。
+    """
     if not path:
         return
     directory = os.path.dirname(path)
@@ -24,10 +32,26 @@ def _ensure_log_dir(path: str) -> None:
 
 
 def setup_logger(environment: Literal["development", "testing", "production"] = "development") -> None:
+    """初始化 loguru 日志器。
+
+    Args:
+        environment (Literal["development", "testing", "production"]): 运行环境，影响日志级别与输出形式。
+
+    Returns:
+        None: 无返回。
+    """
     logger.remove()
 
     # 为所有日志记录补齐 trace_id，避免 KeyError
     def _patch(record: dict) -> None:  # type: ignore[override]
+        """为日志记录补齐 trace_id 字段，避免格式化 KeyError。
+
+        Args:
+            record (dict): 日志记录。
+
+        Returns:
+            None: 无返回。
+        """
         record.setdefault("extra", {})
         record["extra"].setdefault("trace_id", "-")
 

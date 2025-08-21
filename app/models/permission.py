@@ -14,8 +14,18 @@ from app.models.base import BaseModel
 
 
 class Permission(BaseModel):
-    """
-    数据模型：权限
+    """权限实体。
+
+    表示可授权的操作，推荐使用 `resource:action` 命名规范（如 `user:list`）。
+
+    Attributes:
+        code (str): 权限编码（唯一，索引），格式 `^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$`。
+        name (str): 权限名称（展示用）。
+        description (str | None): 权限描述。
+
+    Constraints:
+        - 软删唯一：(`code`, `is_deleted`)、(`name`, `is_deleted`)。
+        - 常用索引：code、name、(id, version)、(is_active, is_deleted)。
     """
 
     code = fields.CharField(max_length=64, index=True, description="权限编码（唯一，如 user:list）")

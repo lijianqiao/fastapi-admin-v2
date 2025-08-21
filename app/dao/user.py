@@ -15,19 +15,58 @@ from app.models import User
 
 
 class UserDAO(BaseDAO[User]):
+    """用户数据访问对象。
+
+    提供用户维度的常见查询与批量操作封装。
+    """
+
     def __init__(self) -> None:
         super().__init__(User)
 
     async def find_by_username(self, username: str) -> User | None:
+        """按用户名查询用户（未软删）。
+
+        Args:
+            username (str): 用户名。
+
+        Returns:
+            User | None: 用户实体或 None。
+        """
         return await self.alive().filter(username=username).first()
 
     async def find_by_phone(self, phone: str) -> User | None:
+        """按手机号查询用户（未软删）。
+
+        Args:
+            phone (str): 手机号。
+
+        Returns:
+            User | None: 用户实体或 None。
+        """
         return await self.alive().filter(phone=phone).first()
 
     async def disable_users(self, user_ids: Sequence[int]) -> int:
+        """批量禁用用户。
+
+        Args:
+            user_ids (Sequence[int]): 用户ID集合。
+
+        Returns:
+            int: 受影响行数。
+        """
         return await self.alive().filter(id__in=list(user_ids)).update(is_active=False)
 
     async def search(self, keyword: str, *, page: int = 1, page_size: int = 20) -> tuple[list[User], int]:
+        """按用户名/手机号模糊搜索并分页。
+
+        Args:
+            keyword (str): 关键字。
+            page (int): 页码。
+            page_size (int): 每页数量。
+
+        Returns:
+            tuple[list[User], int]: (items, total)。
+        """
         q = self.alive().filter(username__icontains=keyword) | self.alive().filter(phone__icontains=keyword)
         total = await q.count()
         items = await q.order_by("-id").offset((page - 1) * page_size).limit(page_size)

@@ -14,8 +14,18 @@ from app.models.base import BaseModel
 
 
 class Role(BaseModel):
-    """
-    数据模型：角色
+    """角色实体。
+
+    用于聚合权限并赋予用户，实现基于角色的访问控制（RBAC）。
+
+    Attributes:
+        name (str): 角色名称（唯一）。
+        code (str): 角色编码（唯一，索引），推荐小写下划线或短横线风格。
+        description (str | None): 角色描述。
+
+    Constraints:
+        - 软删唯一：(`name`, `is_deleted`)、(`code`, `is_deleted`)。
+        - 常用索引：name、code、(id, version)、(is_active, is_deleted)。
     """
 
     name = fields.CharField(max_length=64, description="角色名称（唯一）")

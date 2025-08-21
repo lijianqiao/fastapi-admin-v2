@@ -40,6 +40,11 @@ TORTOISE_ORM: dict[str, Any] = {
 
 
 async def init_database() -> None:
+    """初始化数据库连接
+
+    Returns:
+        None: 无返回
+    """
     logger.info("初始化数据库连接")
     await Tortoise.init(config=TORTOISE_ORM)
     generate = False  # 使用 aerich 迁移；此处不自动生成
@@ -48,5 +53,10 @@ async def init_database() -> None:
 
 
 async def close_database() -> None:
+    """关闭数据库连接
+
+    Returns:
+        None: 无返回
+    """
     logger.info("关闭数据库连接")
     await Tortoise.close_connections()

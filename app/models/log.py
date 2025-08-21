@@ -14,8 +14,25 @@ from app.models.base import BaseModel
 
 
 class AuditLog(BaseModel):
-    """
-    数据模型：操作审计日志
+    """操作审计日志实体。
+
+    记录受审计的方法调用与请求上下文信息，便于安全追溯与问题定位。
+
+    Attributes:
+        actor_id (int): 操作者用户ID。
+        action (str): 操作动作标识（建议与权限常量一致）。
+        target_id (int | None): 目标对象ID。
+        path (str | None): 请求路径。
+        method (str | None): HTTP 方法。
+        ip (str | None): 客户端 IP。
+        ua (str | None): User-Agent。
+        status (int | None): 响应状态码。
+        latency_ms (int | None): 耗时（毫秒）。
+        trace_id (str | None): Trace ID，用于链路追踪。
+        error (str | None): 错误详情。
+
+    Indexes:
+        - (actor_id, created_at)、trace_id、(status, created_at)、(id, version)。
     """
 
     actor_id = fields.BigIntField(index=True, description="操作者用户ID")

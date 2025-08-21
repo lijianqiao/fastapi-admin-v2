@@ -12,6 +12,15 @@ from enum import StrEnum
 
 
 class Permission(StrEnum):
+    """权限常量
+
+    常用的权限常量：
+    - 用户管理：user:list, user:create, user:update, user:delete, user:bulk_delete, user:disable, user:bind_roles, user:unbind_roles, user:bind_roles_batch, user:unbind_roles_batch
+    - 角色管理：role:list, role:create, role:update, role:delete, role:bulk_delete, role:disable, role:bind_permissions, role:unbind_permissions, role:bind_permissions_batch, role:unbind_permissions_batch
+    - 权限管理：permission:list, permission:create, permission:update, permission:delete, permission:bulk_delete, permission:disable
+    - 审计日志：log:list
+    """
+
     USER_LIST = "user:list"
     USER_CREATE = "user:create"
     USER_UPDATE = "user:update"

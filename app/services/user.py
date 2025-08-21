@@ -21,12 +21,30 @@ from app.utils.audit import log_operation
 
 
 class UserService(BaseService):
+    """用户服务。
+
+    提供用户的创建、更新、查询、分页、禁用，以及角色绑定/解绑（含批量）等能力。
+    重要变更会触发权限缓存版本号自增，确保权限及时失效。
+    """
+
     def __init__(self, user_dao: UserDAO | None = None, user_role_dao: UserRoleDAO | None = None) -> None:
         super().__init__(user_dao or UserDAO())
         self.user_role_dao = user_role_dao or UserRoleDAO()
 
     @log_operation(action=Perm.USER_CREATE)
     async def create_user(self, data: UserCreate, *, actor_id: int | None = None) -> UserOut:
+        """创建用户。
+
+        Args:
+            data (UserCreate): 创建用户的入参。
+            actor_id (int | None): 操作者用户ID，用于审计日志记录。
+
+        Returns:
+            UserOut: 新建用户的出参模型。
+
+        Raises:
+            conflict: 当用户名或手机号已存在时抛出。
+        """
         # 唯一性预校验
         if await self.dao.exists(username=data.username):
             raise conflict("用户名已存在")
@@ -44,6 +62,20 @@ class UserService(BaseService):
 
     @log_operation(action=Perm.USER_UPDATE)
     async def update_user(self, user_id: int, version: int, data: UserUpdate, *, actor_id: int | None = None) -> int:
+        """更新用户（乐观锁）。
+
+        Args:
+            user_id (int): 用户ID。
+            version (int): 当前版本号（乐观锁校验）。
+            data (UserUpdate): 更新入参（部分字段可选）。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数，0 表示无更新或冲突。
+
+        Raises:
+            conflict: 当版本冲突或记录不存在时抛出。
+        """
         update_map: dict[str, object] = {}
         if data.username is not None:
             update_map["username"] = data.username
@@ -63,12 +95,33 @@ class UserService(BaseService):
         return affected
 
     async def get_user(self, user_id: int) -> UserOut:
+        """查询用户详情。
+
+        Args:
+            user_id (int): 用户ID。
+
+        Returns:
+            UserOut: 用户详情。
+
+        Raises:
+            not_found: 当用户不存在时抛出。
+        """
         user = await self.dao.get_by_id(user_id)
         if not user:
             raise not_found("用户不存在")
         return UserOut.model_validate(user)
 
     async def list_users(self, query: UserQuery, page: int, page_size: int) -> Page[UserOut]:
+        """分页查询用户。
+
+        Args:
+            query (UserQuery): 查询条件（支持关键词）。
+            page (int): 页码，从 1 开始。
+            page_size (int): 每页数量。
+
+        Returns:
+            Page[UserOut]: 分页结果。
+        """
         if query.keyword:
             items, total = await self.dao.search(query.keyword, page=page, page_size=page_size)
         else:
@@ -79,20 +132,56 @@ class UserService(BaseService):
 
     @log_operation(action=Perm.USER_DISABLE)
     async def disable_users(self, ids: list[int], *, actor_id: int | None = None) -> int:
+        """批量禁用用户。
+
+        Args:
+            ids (list[int]): 用户ID列表。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
         return await self.dao.disable_users(ids)
 
     @log_operation(action=Perm.USER_BIND_ROLES)
     async def bind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> None:
+        """为用户绑定角色。
+
+        Args:
+            data (UserBindIn): 用户与角色绑定入参。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            None: 无返回。
+        """
         await self.user_role_dao.bind_roles(data.user_id, data.role_ids)
         await bump_perm_version()
 
     @log_operation(action=Perm.USER_BIND_ROLES_BATCH)
     async def bind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> None:
+        """为多个用户批量绑定多个角色。
+
+        Args:
+            data (UsersBindIn): 批量绑定入参。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            None: 无返回。
+        """
         await self.user_role_dao.bind_roles_to_users(data.user_ids, data.role_ids)
         await bump_perm_version()
 
     @log_operation(action=Perm.USER_UNBIND_ROLES)
     async def unbind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> int:
+        """为用户移除角色。
+
+        Args:
+            data (UserBindIn): 用户与角色解绑入参。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            int: 受影响行数。
+        """
         affected = await self.user_role_dao.unbind_roles(data.user_id, data.role_ids)
         if affected:
             await bump_perm_version()
@@ -100,6 +189,15 @@ class UserService(BaseService):
 
     @log_operation(action=Perm.USER_UNBIND_ROLES_BATCH)
     async def unbind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> int:
+        """为多个用户批量移除多个角色。
+
+        Args:
+            data (UsersBindIn): 批量解绑入参。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            int: 受影响行数。
+        """
         affected = await self.user_role_dao.unbind_roles_from_users(data.user_ids, data.role_ids)
         if affected:
             await bump_perm_version()

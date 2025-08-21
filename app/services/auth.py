@@ -9,9 +9,14 @@
 from __future__ import annotations
 
 from app.core.exceptions import unauthorized
-from app.core.security import create_token_pair, verify_password
+from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.dao.user import UserDAO
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
+from app.utils.cache_manager import get_cache_manager
+
+
+def _user_ver_key(user_id: int) -> str:
+    return f"auth:ver:u:{user_id}"
 
 
 class AuthService:
@@ -19,6 +24,14 @@ class AuthService:
         self.user_dao = user_dao or UserDAO()
 
     async def login(self, data: LoginIn) -> TokenOut:
+        """登录。
+
+        Args:
+            data (LoginIn): 登录入参。
+
+        Returns:
+            TokenOut: 令牌出参。
+        """
         # 支持 username 或 phone 登录（优先用户名）
         user = await self.user_dao.find_by_username(data.username)
         if not user:
@@ -26,14 +39,46 @@ class AuthService:
             user = await self.user_dao.find_by_phone(data.username)
         if not user or not verify_password(data.password, user.password_hash):
             raise unauthorized("用户名或密码错误")
-        pair = create_token_pair(str(user.id))
-        return TokenOut(**pair)
+        # 读取用户令牌版本（默认 1）
+        cm = get_cache_manager()
+        ver = await cm.get_version(_user_ver_key(int(user.id)), default=1)
+        access = create_access_token(str(user.id), extra_claims={"ver": ver, "typ": "access"})
+        refresh = create_refresh_token(str(user.id), extra_claims={"ver": ver, "typ": "refresh"})
+        return TokenOut(access_token=access, refresh_token=refresh)
 
     async def refresh(self, data: RefreshIn) -> TokenOut:
-        # TODO: 校验 refresh_token（黑名单/版本），此处占位直接颁发新 access_token
-        # 实际实现中需要 decode + 校验 + 可能更新版本号
-        return TokenOut(access_token="", token_type="bearer", refresh_token=data.refresh_token)
+        """刷新令牌。
+
+        Args:
+            data (RefreshIn): 刷新令牌入参。
+
+        Returns:
+            TokenOut: 令牌出参。
+        """
+        payload = decode_token(data.refresh_token)
+        if payload.get("typ") != "refresh":
+            raise unauthorized("无效的刷新令牌")
+        sub = payload.get("sub")
+        ver = int(payload.get("ver") or 0)
+        if not sub or not isinstance(sub, str):
+            raise unauthorized("刷新令牌无效")
+        user_id = int(sub)
+        cm = get_cache_manager()
+        current_ver = await cm.get_version(_user_ver_key(user_id), default=1)
+        if ver != current_ver:
+            raise unauthorized("令牌已失效，请重新登录")
+        # 颁发新对
+        access = create_access_token(sub, extra_claims={"ver": current_ver, "typ": "access"})
+        refresh = create_refresh_token(sub, extra_claims={"ver": current_ver, "typ": "refresh"})
+        return TokenOut(access_token=access, refresh_token=refresh)
 
     async def logout(self, user_id: int) -> None:
-        # TODO: 将当前用户的 token 版本提升或加入黑名单
+        """注销。
+
+        Args:
+            user_id (int): 用户ID。
+        """
+        # 提升用户版本号，令历史令牌全部失效
+        cm = get_cache_manager()
+        await cm.bump_version(_user_ver_key(user_id))
         return None

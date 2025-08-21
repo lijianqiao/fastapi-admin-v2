@@ -13,6 +13,8 @@ from pydantic.config import ConfigDict
 
 
 class UserCreate(BaseModel):
+    """创建用户入参。"""
+
     username: str = Field(min_length=3, max_length=64)
     phone: str = Field(min_length=6, max_length=20)
     email: EmailStr | None = None
@@ -20,6 +22,8 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    """更新用户入参（部分字段可选）。"""
+
     username: str | None = Field(default=None, min_length=3, max_length=64)
     phone: str | None = Field(default=None, min_length=6, max_length=20)
     email: EmailStr | None = None
@@ -28,10 +32,14 @@ class UserUpdate(BaseModel):
 
 
 class UserQuery(BaseModel):
+    """用户查询入参。"""
+
     keyword: str | None = Field(default=None, description="按用户名/手机号模糊搜索")
 
 
 class UserOut(BaseModel):
+    """用户出参模型。"""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     username: str
@@ -44,14 +52,20 @@ class UserOut(BaseModel):
 
 
 class UserIdsIn(BaseModel):
+    """批量用户ID入参。"""
+
     ids: list[int] = Field(min_items=1)
 
 
 class UserBindIn(BaseModel):
+    """为用户绑定角色入参。"""
+
     user_id: int
     role_ids: list[int] = Field(min_items=1)
 
 
 class UsersBindIn(BaseModel):
+    """为多个用户批量绑定角色入参。"""
+
     user_ids: list[int] = Field(min_items=1)
     role_ids: list[int] = Field(min_items=1)

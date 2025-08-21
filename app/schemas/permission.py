@@ -13,12 +13,16 @@ from pydantic.config import ConfigDict
 
 
 class PermissionCreate(BaseModel):
+    """创建权限入参。"""
+
     code: str = Field(min_length=2, max_length=64, pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$")
     name: str = Field(min_length=2, max_length=64)
     description: str | None = Field(default=None, max_length=255)
 
 
 class PermissionUpdate(BaseModel):
+    """更新权限入参（部分字段可选）。"""
+
     code: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$")
     name: str | None = Field(default=None, min_length=2, max_length=64)
     description: str | None = Field(default=None, max_length=255)
@@ -26,6 +30,8 @@ class PermissionUpdate(BaseModel):
 
 
 class PermissionOut(BaseModel):
+    """权限出参模型。"""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     code: str
@@ -35,4 +41,6 @@ class PermissionOut(BaseModel):
 
 
 class PermissionIdsIn(BaseModel):
+    """批量权限ID入参。"""
+
     ids: list[int] = Field(min_items=1)

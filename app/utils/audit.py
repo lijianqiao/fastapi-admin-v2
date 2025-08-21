@@ -24,12 +24,18 @@ def log_operation(
     action: str,
     target_getter: Callable[[tuple[Any, ...], dict[str, Any]], int | None] | None = None,
 ) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
-    """
-    审计日志装饰器：记录服务层操作
+    """审计日志装饰器：记录服务层操作。
 
-    - action: 操作动作标识（如 "user:create"）
-    - target_getter: 从 (args, kwargs) 中提取 target_id 的函数，可选
-    - actor_id: 从被调用函数的 kwargs 中读取（key: actor_id），缺省为 0
+    Args:
+        action (str): 操作动作标识（如 "user:create"）。
+        target_getter (Callable | None): 从 (args, kwargs) 中提取 target_id 的函数，可选。
+
+    Returns:
+        Callable: 装饰后的异步函数。
+
+    Notes:
+        - actor_id 从被调用函数的 kwargs 中读取（key: actor_id），缺省为 0。
+        - 无论成功或失败均会写入审计日志，失败时记录异常文本。
     """
 
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:

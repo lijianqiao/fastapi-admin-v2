@@ -16,12 +16,32 @@ T = TypeVar("T")
 
 
 class Response[T](BaseModel):
+    """统一响应模型。
+
+    Attributes:
+        code (int): 业务状态码，默认 200。
+        message (str): 提示信息，默认 "success"。
+        data (T | None): 业务数据载荷，泛型类型。
+
+    Notes:
+        - 除登录接口外，其他 API 均使用该响应包装。
+    """
+
     code: int = Field(default=200)
     message: str = Field(default="success")
     data: T | None = None
 
 
 class Page[T](BaseModel):
+    """分页结果模型。
+
+    Attributes:
+        items (list[T]): 当前页项目列表。
+        total (int): 总记录数。
+        page (int): 当前页码。
+        page_size (int): 每页大小。
+    """
+
     items: list[T]
     total: int
     page: int

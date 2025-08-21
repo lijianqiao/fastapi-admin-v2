@@ -14,8 +14,22 @@ from app.models.base import BaseModel
 
 
 class User(BaseModel):
-    """
-    数据模型：用户
+    """用户实体。
+
+    表示系统中的用户账号与状态信息。
+
+    Attributes:
+        username (str): 用户名（唯一，索引）。
+        phone (str): 手机号（唯一，必填，索引）。
+        email (str | None): 邮箱（可选，唯一，索引）。
+        password_hash (str): 密码哈希。
+        failed_attempts (int): 连续登录失败次数。
+        locked_until (datetime | None): 账户锁定截止时间。
+        last_login_at (datetime | None): 最近登录时间。
+
+    Constraints:
+        - 软删唯一：(`username`, `is_deleted`)、(`phone`, `is_deleted`)、(`email`, `is_deleted`)。
+        - 常用查询索引：用户名、手机号、邮箱、(id, version)、(is_active, is_deleted) 等。
     """
 
     username = fields.CharField(max_length=64, index=True, description="用户名（唯一）")

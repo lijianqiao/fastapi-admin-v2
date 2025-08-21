@@ -23,6 +23,7 @@ router = APIRouter()
     "/",
     dependencies=[Depends(has_permission(Perm.LOG_LIST))],
     response_model=Response[Page[AuditLogOut]],
+    summary="分页查询审计日志",
 )
 async def list_logs(
     actor_id: int | None = Query(None),
@@ -32,6 +33,19 @@ async def list_logs(
     page_size: int = Query(20, ge=1, le=200),
     svc: AuditLogService = Depends(get_audit_log_service),
 ) -> Response[Page[AuditLogOut]]:
+    """分页查询审计日志。
+
+    Args:
+        actor_id (int | None): 操作用户ID。
+        action (str | None): 操作类型。
+        trace_id (str | None): 请求追踪ID。
+        page (int): 页码。
+        page_size (int): 每页数量。
+        svc (AuditLogService): 审计日志服务依赖。
+
+    Returns:
+        Response[Page[AuditLogOut]]: 统一响应包装的分页审计日志。
+    """
     result = await svc.list_logs(
         AuditLogQuery(actor_id=actor_id, action=action, trace_id=trace_id, page=page, page_size=page_size)
     )

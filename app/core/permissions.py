@@ -20,19 +20,49 @@ PERM_VERSION_KEY: Final[str] = "rbac:perm:version"
 
 
 def _cache_key(user_id: int, version: int) -> str:
+    """缓存键
+
+    Args:
+        user_id (int): 用户ID
+        version (int): 版本号
+
+    Returns:
+        str: 缓存键
+    """
     return f"rbac:perm:v{version}:u:{user_id}"
 
 
 async def _get_perm_version(cm: CacheManager) -> int:
+    """获取权限版本
+
+    Args:
+        cm (CacheManager): 缓存管理器
+
+    Returns:
+        int: 权限版本
+    """
     return await cm.get_version(PERM_VERSION_KEY, default=1)
 
 
 async def bump_perm_version() -> int:
+    """提升权限版本
+
+    Returns:
+        int: 提升后的权限版本
+    """
     cm = get_cache_manager()
     return await cm.bump_version(PERM_VERSION_KEY)
 
 
 async def _load_user_permissions_from_db(user_id: int) -> set[str]:
+    """从数据库加载用户权限
+
+    Args:
+        user_id (int): 用户ID
+
+    Returns:
+        set[str]: 用户权限集合
+    """
     # 获取用户角色
     user_role_dao = UserRoleDAO()
     role_perm_dao = RolePermissionDAO()
@@ -52,6 +82,15 @@ async def _load_user_permissions_from_db(user_id: int) -> set[str]:
 
 
 async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
+    """检查用户是否有权限
+
+    Args:
+        user_id (int): 用户ID
+        required (Iterable[str]): 需要的权限
+
+    Returns:
+        bool: 是否有权限
+    """
     cm = get_cache_manager()
     version = await _get_perm_version(cm)
     key = _cache_key(user_id, version)

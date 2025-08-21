@@ -65,10 +65,26 @@ __all__ = [
 
 
 def install_exception_handlers(app: FastAPI) -> None:
-    """安装统一异常处理器，包装为 Response 格式。"""
+    """安装统一异常处理器，包装为 Response 格式。
+
+    Args:
+        app (FastAPI): FastAPI 应用
+
+    Returns:
+        None: 无返回
+    """
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:  # type: ignore[override]
+        """HTTP 异常处理器
+
+        Args:
+            _ (Request): 请求
+            exc (StarletteHTTPException): 异常
+
+        Returns:
+            JSONResponse: 响应
+        """
         # 保留原始 HTTP 状态码（如 401），响应体统一为 Response 结构
         payload = {"code": exc.status_code, "message": exc.detail or "HTTP 错误", "data": None}
         headers = getattr(exc, "headers", None)
@@ -76,11 +92,29 @@ def install_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:  # type: ignore[override]
+        """请求验证异常处理器
+
+        Args:
+            _ (Request): 请求
+            exc (RequestValidationError): 异常
+
+        Returns:
+            JSONResponse: 响应
+        """
         payload = {"code": status.HTTP_422_UNPROCESSABLE_ENTITY, "message": "验证错误", "data": exc.errors()}
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:  # type: ignore[override]
+        """未处理异常处理器
+
+        Args:
+            _ (Request): 请求
+            exc (Exception): 异常
+
+        Returns:
+            JSONResponse: 响应
+        """
         logger.exception("未处理异常")
         payload = {"code": HTTP_500_INTERNAL_SERVER_ERROR, "message": "内部服务器错误", "data": None}
         return JSONResponse(status_code=HTTP_500_INTERNAL_SERVER_ERROR, content=payload)

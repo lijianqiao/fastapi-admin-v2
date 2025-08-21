@@ -13,12 +13,16 @@ from pydantic.config import ConfigDict
 
 
 class RoleCreate(BaseModel):
+    """创建角色入参。"""
+
     name: str = Field(min_length=2, max_length=64)
     code: str = Field(min_length=2, max_length=64)
     description: str | None = Field(default=None, max_length=255)
 
 
 class RoleUpdate(BaseModel):
+    """更新角色入参（部分字段可选）。"""
+
     name: str | None = Field(default=None, min_length=2, max_length=64)
     code: str | None = Field(default=None, min_length=2, max_length=64)
     description: str | None = Field(default=None, max_length=255)
@@ -26,6 +30,8 @@ class RoleUpdate(BaseModel):
 
 
 class RoleOut(BaseModel):
+    """角色出参模型。"""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
@@ -35,14 +41,20 @@ class RoleOut(BaseModel):
 
 
 class RoleBindIn(BaseModel):
+    """为角色绑定权限入参。"""
+
     role_id: int
     target_ids: list[int] = Field(min_items=1)
 
 
 class RoleIdsIn(BaseModel):
+    """批量角色ID入参。"""
+
     ids: list[int] = Field(min_items=1)
 
 
 class RolesBindIn(BaseModel):
+    """为多个角色批量绑定权限入参。"""
+
     role_ids: list[int] = Field(min_items=1)
     permission_ids: list[int] = Field(min_items=1)

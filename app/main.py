@@ -9,6 +9,10 @@ from app.core.lifespan import lifespan, setup_middlewares
 
 
 def create_app() -> FastAPI:
+    """创建 FastAPI 应用
+    Returns:
+        FastAPI: FastAPI 应用
+    """
     settings = get_settings()
     app = FastAPI(
         title=settings.APP_NAME,
@@ -27,6 +31,10 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, str]:
+        """健康检查
+        Returns:
+            dict[str, str]: 健康检查结果
+        """
         return {"status": "ok"}
 
     # v1 API

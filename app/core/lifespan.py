@@ -22,6 +22,14 @@ from app.utils.logger import logger, setup_logger
 
 
 def setup_middlewares(app: FastAPI) -> None:
+    """设置中间件
+
+    Args:
+        app (FastAPI): FastAPI 应用
+
+    Returns:
+        None: 无返回
+    """
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -33,6 +41,14 @@ def setup_middlewares(app: FastAPI) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """应用生命周期管理
+
+    Args:
+        app (FastAPI): FastAPI 应用
+
+    Returns:
+        AsyncIterator[None]: 异步迭代器
+    """
     settings = get_settings()
     environment = settings.ENVIRONMENT
     if environment not in ("development", "testing", "production"):

@@ -13,6 +13,8 @@ from pydantic.config import ConfigDict
 
 
 class AuditLogOut(BaseModel):
+    """审计日志出参模型。"""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     actor_id: int
@@ -30,6 +32,8 @@ class AuditLogOut(BaseModel):
 
 
 class AuditLogQuery(BaseModel):
+    """审计日志查询入参。"""
+
     actor_id: int | None = None
     action: str | None = None
     trace_id: str | None = None

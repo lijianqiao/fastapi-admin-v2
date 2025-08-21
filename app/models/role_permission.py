@@ -14,8 +14,17 @@ from app.models.base import BaseModel
 
 
 class RolePermission(BaseModel):
-    """
-    关系：角色-权限 多对多中间表
+    """角色-权限关系实体（多对多中间表）。
+
+    表示角色与权限的绑定关系，用于计算角色的权限集。
+
+    Attributes:
+        role (Role): 关联角色。
+        permission (Permission): 关联权限。
+
+    Constraints:
+        - 软删唯一：(`role`, `permission`, `is_deleted`)。
+        - 常用索引：role、permission、(role, permission)、(id, version)、(is_active, is_deleted)。
     """
 
     role = fields.ForeignKeyField(

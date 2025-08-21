@@ -17,11 +17,25 @@ from app.utils.audit import log_operation
 
 
 class AuditLogService(BaseService):
+    """审计日志服务。
+
+    提供审计日志的分页查询能力，供后台管理审查使用。
+    """
+
     def __init__(self, dao: AuditLogDAO | None = None) -> None:
         super().__init__(dao or AuditLogDAO())
 
     @log_operation(action=Perm.LOG_LIST)
     async def list_logs(self, query: AuditLogQuery, *, actor_id: int | None = None) -> Page[AuditLogOut]:
+        """分页查询审计日志。
+
+        Args:
+            query (AuditLogQuery): 查询条件。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            Page[AuditLogOut]: 分页结果。
+        """
         filters: dict[str, object] = {}
         if query.actor_id is not None:
             filters["actor_id"] = query.actor_id

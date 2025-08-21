@@ -14,8 +14,17 @@ from app.models.base import BaseModel
 
 
 class UserRole(BaseModel):
-    """
-    关系：用户-角色 多对多中间表
+    """用户-角色关系实体（多对多中间表）。
+
+    表示用户与角色的绑定关系，用于计算用户的聚合权限。
+
+    Attributes:
+        user (User): 关联用户。
+        role (Role): 关联角色。
+
+    Constraints:
+        - 软删唯一：(`user`, `role`, `is_deleted`)。
+        - 常用索引：user、role、(user, role)、(id, version)、(is_active, is_deleted)。
     """
 
     user = fields.ForeignKeyField(

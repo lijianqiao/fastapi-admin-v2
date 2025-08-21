@@ -15,6 +15,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """应用配置
+
+    Args:
+        BaseSettings (_type_): _description_
+
+    Returns:
+        Settings: 应用配置
+    """
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     # 应用
@@ -45,4 +54,9 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """获取应用配置
+
+    Returns:
+        Settings: 应用配置
+    """
     return Settings()
