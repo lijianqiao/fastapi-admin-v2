@@ -47,9 +47,14 @@ async def init_database() -> None:
     """
     logger.info("初始化数据库连接")
     await Tortoise.init(config=TORTOISE_ORM)
-    generate = False  # 使用 aerich 迁移；此处不自动生成
-    if generate:
-        await Tortoise.generate_schemas()
+    # 测试环境自动生成表结构，避免依赖迁移
+    try:
+        from app.core.config import get_settings as _gs  # 延迟导入避免循环
+
+        if _gs().ENVIRONMENT.lower() == "testing":
+            await Tortoise.generate_schemas()
+    except Exception:
+        pass
 
 
 async def close_database() -> None:

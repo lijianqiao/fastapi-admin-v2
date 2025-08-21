@@ -56,7 +56,7 @@ def _create_token(subject: str, expires_delta: int, extra_claims: dict[str, Any]
         str: 令牌
     """
     settings = get_settings()
-    now = dt.datetime.utcnow()
+    now = dt.datetime.now(dt.UTC)
     exp = now + dt.timedelta(seconds=expires_delta)
     payload: dict[str, Any] = {"sub": subject, "iat": now, "exp": exp, "ver": 1}
     if extra_claims:

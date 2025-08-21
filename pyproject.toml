@@ -44,3 +44,8 @@ known-first-party = ["app"]
 tortoise_orm = "app.core.database.TORTOISE_ORM"
 location = "./migrations"
 src_folder = "./."
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]

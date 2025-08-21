@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field
 from pydantic.config import ConfigDict
 
@@ -42,30 +44,32 @@ class UserOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
     id: int
+    version: int
     username: str
     phone: str
     email: EmailStr | None = None
     is_active: bool
     failed_attempts: int
-    locked_until: str | None = None
-    last_login_at: str | None = None
+    locked_until: datetime | None = None
+    last_login_at: datetime | None = None
+    created_at: datetime | None = None
 
 
 class UserIdsIn(BaseModel):
     """批量用户ID入参。"""
 
-    ids: list[int] = Field(min_items=1)
+    ids: list[int] = Field(min_length=1)
 
 
 class UserBindIn(BaseModel):
     """为用户绑定角色入参。"""
 
     user_id: int
-    role_ids: list[int] = Field(min_items=1)
+    role_ids: list[int] = Field(min_length=1)
 
 
 class UsersBindIn(BaseModel):
     """为多个用户批量绑定角色入参。"""
 
-    user_ids: list[int] = Field(min_items=1)
-    role_ids: list[int] = Field(min_items=1)
+    user_ids: list[int] = Field(min_length=1)
+    role_ids: list[int] = Field(min_length=1)

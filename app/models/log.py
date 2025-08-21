@@ -35,7 +35,7 @@ class AuditLog(BaseModel):
         - (actor_id, created_at)、trace_id、(status, created_at)、(id, version)。
     """
 
-    actor_id = fields.BigIntField(index=True, description="操作者用户ID")
+    actor_id = fields.BigIntField(db_index=True, description="操作者用户ID")
     action = fields.CharField(max_length=64, description="操作动作标识")
     target_id = fields.BigIntField(null=True, description="目标对象ID")
     path = fields.CharField(max_length=255, null=True, description="请求路径")

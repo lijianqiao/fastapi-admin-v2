@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
@@ -34,13 +36,15 @@ class PermissionOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
     id: int
+    version: int
     code: str
     name: str
     description: str | None = None
     is_active: bool
+    created_at: datetime | None = None
 
 
 class PermissionIdsIn(BaseModel):
     """批量权限ID入参。"""
 
-    ids: list[int] = Field(min_items=1)
+    ids: list[int] = Field(min_length=1)

@@ -31,11 +31,11 @@ class BaseModel(Model):
         - 建议更新时配合 DAO 层的 `update_with_version` 实现乐观锁。
     """
 
-    id = fields.BigIntField(pk=True, description="主键ID（BigInt）")
-    is_active = fields.BooleanField(default=True, index=True, description="是否激活")
-    is_deleted = fields.BooleanField(default=False, index=True, description="是否已软删除")
+    id = fields.BigIntField(primary_key=True, description="主键ID（BigInt）")
+    is_active = fields.BooleanField(default=True, db_index=True, description="是否激活")
+    is_deleted = fields.BooleanField(default=False, db_index=True, description="是否已软删除")
     deleted_at = fields.DatetimeField(null=True, description="软删除时间")
-    version = fields.IntField(default=0, index=True, description="版本号（乐观锁）")
+    version = fields.IntField(default=0, db_index=True, description="版本号（乐观锁）")
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 

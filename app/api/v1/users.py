@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 
 from app.core.constants import Permission as Perm
 from app.core.dependencies import (
@@ -57,7 +57,7 @@ async def create_user(
 async def update_user(
     user_id: int,
     version: int = Query(..., description="乐观锁版本号"),
-    data: UserUpdate | None = None,
+    data: UserUpdate = Body(default_factory=UserUpdate),
     svc: UserService = Depends(get_user_service),
     actor_id: int = Depends(get_current_user_id),
 ) -> Response[None]:
@@ -73,7 +73,7 @@ async def update_user(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.update_user(user_id, version, data or UserUpdate(), actor_id=actor_id)
+    await svc.update_user(user_id, version, data, actor_id=actor_id)
     return Response[None](data=None)
 
 

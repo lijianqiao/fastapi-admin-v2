@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
@@ -28,7 +30,7 @@ class AuditLogOut(BaseModel):
     latency_ms: int | None = None
     trace_id: str | None = None
     error: str | None = None
-    created_at: str
+    created_at: datetime | None = None
 
 
 class AuditLogQuery(BaseModel):

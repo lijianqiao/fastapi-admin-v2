@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
@@ -34,27 +36,29 @@ class RoleOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
     id: int
+    version: int
     name: str
     code: str
     description: str | None = None
     is_active: bool
+    created_at: datetime | None = None
 
 
 class RoleBindIn(BaseModel):
     """为角色绑定权限入参。"""
 
     role_id: int
-    target_ids: list[int] = Field(min_items=1)
+    target_ids: list[int] = Field(min_length=1)
 
 
 class RoleIdsIn(BaseModel):
     """批量角色ID入参。"""
 
-    ids: list[int] = Field(min_items=1)
+    ids: list[int] = Field(min_length=1)
 
 
 class RolesBindIn(BaseModel):
     """为多个角色批量绑定权限入参。"""
 
-    role_ids: list[int] = Field(min_items=1)
-    permission_ids: list[int] = Field(min_items=1)
+    role_ids: list[int] = Field(min_length=1)
+    permission_ids: list[int] = Field(min_length=1)

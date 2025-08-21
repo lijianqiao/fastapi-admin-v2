@@ -29,7 +29,7 @@ class Role(BaseModel):
     """
 
     name = fields.CharField(max_length=64, description="角色名称（唯一）")
-    code = fields.CharField(max_length=64, index=True, description="角色编码（唯一）")
+    code = fields.CharField(max_length=64, db_index=True, description="角色编码（唯一）")
     description = fields.CharField(max_length=255, null=True, description="角色描述")
 
     class Meta:  # type: ignore
