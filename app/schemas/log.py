@@ -36,8 +36,8 @@ class AuditLogOut(BaseModel):
 class AuditLogQuery(BaseModel):
     """审计日志查询入参。"""
 
-    actor_id: int | None = None
-    action: str | None = None
-    trace_id: str | None = None
+    actor_id: int | None = Field(default=None, ge=1)
+    action: str | None = Field(default=None, min_length=2, max_length=64)
+    trace_id: str | None = Field(default=None, min_length=8, max_length=64)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=200)

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic.config import ConfigDict
 
 
@@ -18,7 +18,7 @@ class RoleCreate(BaseModel):
     """创建角色入参。"""
 
     name: str = Field(min_length=2, max_length=64)
-    code: str = Field(min_length=2, max_length=64)
+    code: str = Field(min_length=2, max_length=64, pattern=r"^[a-z0-9_\-]{2,64}$")
     description: str | None = Field(default=None, max_length=255)
 
 
@@ -26,7 +26,7 @@ class RoleUpdate(BaseModel):
     """更新角色入参（部分字段可选）。"""
 
     name: str | None = Field(default=None, min_length=2, max_length=64)
-    code: str | None = Field(default=None, min_length=2, max_length=64)
+    code: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z0-9_\-]{2,64}$")
     description: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
 
@@ -50,11 +50,27 @@ class RoleBindIn(BaseModel):
     role_id: int
     target_ids: list[int] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def _no_dup(self) -> RoleBindIn:
+        if len(set(self.target_ids)) != len(self.target_ids):
+            from app.core.exceptions import unprocessable
+
+            raise unprocessable("权限ID 列表存在重复")
+        return self
+
 
 class RoleIdsIn(BaseModel):
     """批量角色ID入参。"""
 
     ids: list[int] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _no_dup(self) -> RoleIdsIn:
+        if len(set(self.ids)) != len(self.ids):
+            from app.core.exceptions import unprocessable
+
+            raise unprocessable("角色ID 列表存在重复")
+        return self
 
 
 class RolesBindIn(BaseModel):
@@ -62,3 +78,13 @@ class RolesBindIn(BaseModel):
 
     role_ids: list[int] = Field(min_length=1)
     permission_ids: list[int] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _no_dup(self) -> RolesBindIn:
+        from app.core.exceptions import unprocessable
+
+        if len(set(self.role_ids)) != len(self.role_ids):
+            raise unprocessable("角色ID 列表存在重复")
+        if len(set(self.permission_ids)) != len(self.permission_ids):
+            raise unprocessable("权限ID 列表存在重复")
+        return self

@@ -25,30 +25,86 @@ class AppError(HTTPException):
 
 
 def bad_request(detail: Any = "Bad request") -> AppError:
+    """400 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 400 错误
+    """
     return AppError(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
 def unauthorized(detail: Any = "Unauthorized") -> AppError:
+    """401 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 401 错误
+    """
     return AppError(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail, headers={"WWW-Authenticate": "Bearer"})
 
 
 def forbidden(detail: Any = "Forbidden") -> AppError:
+    """403 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 403 错误
+    """
     return AppError(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
 
 def not_found(detail: Any = "Not found") -> AppError:
+    """404 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 404 错误
+    """
     return AppError(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
 def conflict(detail: Any = "Conflict") -> AppError:
+    """409 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 409 错误
+    """
     return AppError(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
 def unprocessable(detail: Any = "Unprocessable Entity") -> AppError:
+    """422 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 422 错误
+    """
     return AppError(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
 
 
 def server_error(detail: Any = "Internal Server Error") -> AppError:
+    """500 错误
+
+    Args:
+        detail (Any): 错误详情
+
+    Returns:
+        AppError: 500 错误
+    """
     return AppError(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
 
 
@@ -120,6 +176,14 @@ def install_exception_handlers(app: FastAPI) -> None:
             return obj
 
         def _simplify_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            """简化错误信息
+
+            Args:
+                errors (list[dict[str, Any]]): 错误信息
+
+            Returns:
+                list[dict[str, Any]]: 简化后的错误信息
+            """
             simple: list[dict[str, Any]] = []
             for e in errors:
                 etype = str(e.get("type") or "validation_error")

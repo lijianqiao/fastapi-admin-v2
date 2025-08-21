@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic.config import ConfigDict
 
 
@@ -48,3 +48,11 @@ class PermissionIdsIn(BaseModel):
     """批量权限ID入参。"""
 
     ids: list[int] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _no_dup(self) -> PermissionIdsIn:
+        from app.core.exceptions import unprocessable
+
+        if len(set(self.ids)) != len(self.ids):
+            raise unprocessable("权限ID 列表存在重复")
+        return self

@@ -13,12 +13,14 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic.config import ConfigDict
 
+from app.core.exceptions import unprocessable
+
 
 class UserCreate(BaseModel):
     """创建用户入参。"""
 
     username: str = Field(min_length=3, max_length=64)
-    phone: str = Field(min_length=6, max_length=20)
+    phone: str = Field(min_length=6, max_length=20, pattern=r"^\d{6,20}$")
     email: EmailStr | None = None
     password: str = Field(min_length=6, max_length=64)
 
@@ -27,7 +29,7 @@ class UserUpdate(BaseModel):
     """更新用户入参（部分字段可选）。"""
 
     username: str | None = Field(default=None, min_length=3, max_length=64)
-    phone: str | None = Field(default=None, min_length=6, max_length=20)
+    phone: str | None = Field(default=None, min_length=6, max_length=20, pattern=r"^\d{6,20}$")
     email: EmailStr | None = None
     password: str | None = Field(default=None, min_length=6, max_length=64)
     is_active: bool | None = None
@@ -65,7 +67,7 @@ class AdminChangePasswordIn(BaseModel):
     def _check_confirm(self) -> AdminChangePasswordIn:
         """校验新密码与确认密码一致。"""
         if self.new_password != self.confirm_password:
-            raise ValueError("两次密码不一致")
+            raise unprocessable("两次密码不一致")
         return self
 
 
@@ -80,9 +82,9 @@ class SelfChangePasswordIn(BaseModel):
     def _check_confirm(self) -> SelfChangePasswordIn:
         """校验新密码与确认密码一致，且不等于旧密码。"""
         if self.new_password != self.confirm_password:
-            raise ValueError("两次密码不一致")
+            raise unprocessable("两次密码不一致")
         if self.old_password == self.new_password:
-            raise ValueError("新密码不能与旧密码相同")
+            raise unprocessable("新密码不能与旧密码相同")
         return self
 
 
