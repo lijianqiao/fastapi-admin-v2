@@ -2,15 +2,21 @@
 @Author: li
 @Email: lijianqiao2906@live.com
 @FileName: exceptions.py
-@DateTime: 2025/08/21 10:20:17
-@Docs: 自定义异常类
+@DateTime: 2025/08/21 09:46:00
+@Docs: 自定义异常与统一异常处理器
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+
+from app.utils.logger import logger
 
 
 class AppError(HTTPException):
@@ -56,3 +62,28 @@ __all__ = [
     "unprocessable",
     "server_error",
 ]
+
+
+def install_exception_handlers(app: FastAPI) -> None:
+    """安装统一异常处理器，包装为 Response 格式。"""
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:  # type: ignore[override]
+        # 保留原始 HTTP 状态码（如 401），响应体统一为 Response 结构
+        payload = {"code": exc.status_code, "message": exc.detail or "HTTP 错误", "data": None}
+        headers = getattr(exc, "headers", None)
+        return JSONResponse(status_code=exc.status_code, content=payload, headers=headers)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:  # type: ignore[override]
+        payload = {"code": status.HTTP_422_UNPROCESSABLE_ENTITY, "message": "验证错误", "data": exc.errors()}
+        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:  # type: ignore[override]
+        logger.exception("未处理异常")
+        payload = {"code": HTTP_500_INTERNAL_SERVER_ERROR, "message": "内部服务器错误", "data": None}
+        return JSONResponse(status_code=HTTP_500_INTERNAL_SERVER_ERROR, content=payload)
+
+
+__all__.append("install_exception_handlers")

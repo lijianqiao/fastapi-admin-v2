@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import get_settings
+from app.core.exceptions import install_exception_handlers
 from app.core.lifespan import lifespan, setup_middlewares
 
 
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
 
     # 中间件必须在应用启动前添加
     setup_middlewares(app)
+    install_exception_handlers(app)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
