@@ -21,12 +21,24 @@ class UserRoleDAO(BaseDAO[UserRole]):
         super().__init__(UserRole)
 
     async def bind_roles(self, user_id: int, role_ids: Sequence[int]) -> None:
-        """为单个用户绑定多个角色。"""
+        """为单个用户绑定多个角色。
+
+        Args:
+            user_id (int): 用户ID。
+            role_ids (Sequence[int]): 角色ID集合。
+
+        Returns:
+            None: 无返回。
+        """
         rows = [{"user_id": user_id, "role_id": rid} for rid in role_ids]
         await self.bulk_create(rows)
 
     async def unbind_roles(self, user_id: int, role_ids: Sequence[int]) -> int:
         """为单个用户移除多个角色。
+
+        Args:
+            user_id (int): 用户ID。
+            role_ids (Sequence[int]): 角色ID集合。
 
         Returns:
             int: 受影响行数。
@@ -34,7 +46,15 @@ class UserRoleDAO(BaseDAO[UserRole]):
         return await self.alive().filter(user_id=user_id, role_id__in=list(role_ids)).update(is_deleted=True)
 
     async def bind_roles_to_users(self, user_ids: Sequence[int], role_ids: Sequence[int]) -> None:
-        """为多个用户批量绑定多个角色。"""
+        """为多个用户批量绑定多个角色。
+
+        Args:
+            user_ids (Sequence[int]): 用户ID集合。
+            role_ids (Sequence[int]): 角色ID集合。
+
+        Returns:
+            None: 无返回。
+        """
         rows = [{"user_id": uid, "role_id": rid} for uid in user_ids for rid in role_ids]
         if rows:
             await self.bulk_create(rows)
@@ -48,11 +68,36 @@ class UserRoleDAO(BaseDAO[UserRole]):
         return await self.alive().filter(user_id__in=list(user_ids), role_id__in=list(role_ids)).update(is_deleted=True)
 
     async def list_roles_of_user(self, user_id: int) -> list[UserRole]:
-        """查询单个用户的角色关系列表。"""
+        """查询单个用户的角色关系列表。
+
+        Args:
+            user_id (int): 用户ID。
+
+        Returns:
+            list[UserRole]: 角色关系列表。
+        """
         return await self.alive().filter(user_id=user_id).all()
 
     async def list_by_user_ids(self, user_ids: Sequence[int]) -> list[UserRole]:
-        """按用户ID集合查询角色关系列表。"""
+        """按用户ID集合查询角色关系列表。
+
+        Args:
+            user_ids (Sequence[int]): 用户ID集合。
+
+        Returns:
+            list[UserRole]: 角色关系列表。
+        """
         if not user_ids:
             return []
         return await self.alive().filter(user_id__in=list(user_ids)).all()
+
+    async def list_users_of_role(self, role_id: int) -> list[UserRole]:
+        """查询角色下的用户关系列表。
+
+        Args:
+            role_id (int): 角色ID。
+
+        Returns:
+            list[UserRole]: 用户关系列表。
+        """
+        return await self.alive().filter(role_id=role_id).all()

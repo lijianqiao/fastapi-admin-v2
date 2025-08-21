@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic.config import ConfigDict
 
 
@@ -53,6 +53,37 @@ class UserOut(BaseModel):
     locked_until: datetime | None = None
     last_login_at: datetime | None = None
     created_at: datetime | None = None
+
+
+class AdminChangePasswordIn(BaseModel):
+    """管理员修改用户密码入参。"""
+
+    new_password: str = Field(min_length=6, max_length=64)
+    confirm_password: str = Field(min_length=6, max_length=64)
+
+    @model_validator(mode="after")
+    def _check_confirm(self) -> AdminChangePasswordIn:
+        """校验新密码与确认密码一致。"""
+        if self.new_password != self.confirm_password:
+            raise ValueError("两次密码不一致")
+        return self
+
+
+class SelfChangePasswordIn(BaseModel):
+    """用户自助修改密码入参。"""
+
+    old_password: str = Field(min_length=6, max_length=64)
+    new_password: str = Field(min_length=6, max_length=64)
+    confirm_password: str = Field(min_length=6, max_length=64)
+
+    @model_validator(mode="after")
+    def _check_confirm(self) -> SelfChangePasswordIn:
+        """校验新密码与确认密码一致，且不等于旧密码。"""
+        if self.new_password != self.confirm_password:
+            raise ValueError("两次密码不一致")
+        if self.old_password == self.new_password:
+            raise ValueError("新密码不能与旧密码相同")
+        return self
 
 
 class UserIdsIn(BaseModel):

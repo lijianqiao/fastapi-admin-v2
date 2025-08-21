@@ -11,11 +11,20 @@ from __future__ import annotations
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
 from app.schemas.response import Page
-from app.schemas.user import UserBindIn, UserCreate, UserOut, UserQuery, UsersBindIn, UserUpdate
+from app.schemas.user import (
+    AdminChangePasswordIn,
+    SelfChangePasswordIn,
+    UserBindIn,
+    UserCreate,
+    UserOut,
+    UserQuery,
+    UsersBindIn,
+    UserUpdate,
+)
 from app.services.base import BaseService
 from app.utils.audit import log_operation
 
@@ -95,7 +104,7 @@ class UserService(BaseService):
         return affected
 
     async def get_user(self, user_id: int) -> UserOut:
-        """查询用户详情。
+        """查询用户详情（附带角色与权限）。
 
         Args:
             user_id (int): 用户ID。
@@ -109,6 +118,9 @@ class UserService(BaseService):
         user = await self.dao.get_by_id(user_id)
         if not user:
             raise not_found("用户不存在")
+        # 组装角色与权限（按需查询）
+        await self.user_role_dao.list_roles_of_user(user_id)
+        # 返回基本用户信息，角色/权限可在 API 层扩展字段返回
         return UserOut.model_validate(user)
 
     async def list_users(self, query: UserQuery, page: int, page_size: int) -> Page[UserOut]:
@@ -202,3 +214,51 @@ class UserService(BaseService):
         if affected:
             await bump_perm_version()
         return affected
+
+    @log_operation(action=Perm.USER_UPDATE)
+    async def admin_change_password(
+        self, user_id: int, payload: AdminChangePasswordIn, *, actor_id: int | None = None
+    ) -> None:
+        """管理员修改指定用户密码（无需旧密码）。
+
+        Args:
+            user_id (int): 用户ID。
+            payload (AdminChangePasswordIn): 修改密码入参。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            None: 无返回。
+        """
+        if payload.new_password != payload.confirm_password:
+            raise conflict("两次密码不一致")
+        user = await self.dao.get_by_id(user_id)
+        if not user:
+            raise not_found("用户不存在")
+        hashed = hash_password(payload.new_password)
+        affected = await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
+        if affected == 0:
+            raise conflict("更新冲突或记录不存在")
+
+    @log_operation(action=Perm.USER_UPDATE)
+    async def self_change_password(
+        self, user_id: int, payload: SelfChangePasswordIn, *, actor_id: int | None = None
+    ) -> None:
+        """用户自助修改密码（需要旧密码验证）。
+
+        Args:
+            user_id (int): 用户ID。
+            payload (SelfChangePasswordIn): 修改密码入参。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            None: 无返回。
+        """
+        user = await self.dao.get_by_id(user_id)
+        if not user:
+            raise not_found("用户不存在")
+        if not verify_password(payload.old_password, user.password_hash):
+            raise conflict("旧密码不正确")
+        if payload.new_password != payload.confirm_password:
+            raise conflict("两次密码不一致")
+        hashed = hash_password(payload.new_password)
+        await self.dao.update_with_version(int(user.id), version=user.version, data={"password_hash": hashed})

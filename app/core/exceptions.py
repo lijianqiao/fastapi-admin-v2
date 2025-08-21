@@ -103,12 +103,14 @@ def install_exception_handlers(app: FastAPI) -> None:
         """
 
         def _to_jsonable(obj: Any) -> Any:
-            # 递归转换 bytes -> str，集合 -> 列表，其他不可序列化类型转字符串
+            # 递归转换：bytes/异常为 str，集合 -> 列表，保持 JSON 可序列化
             if isinstance(obj, bytes):
                 try:
                     return obj.decode("utf-8", errors="ignore")
                 except Exception:  # noqa: BLE001
                     return str(obj)
+            if isinstance(obj, BaseException):
+                return str(obj)
             if isinstance(obj, list | tuple):
                 return [_to_jsonable(i) for i in obj]
             if isinstance(obj, dict):
@@ -117,10 +119,31 @@ def install_exception_handlers(app: FastAPI) -> None:
                 return [_to_jsonable(i) for i in obj]
             return obj
 
+        def _simplify_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            simple: list[dict[str, Any]] = []
+            for e in errors:
+                etype = str(e.get("type") or "validation_error")
+                loc = e.get("loc") or []
+                field = ".".join([str(x) for x in loc[1:]]) if isinstance(loc, list | tuple) else str(loc)
+                msg = str(e.get("msg") or "参数不合法")
+                ctx = e.get("ctx") or {}
+                # 友好映射
+                if etype == "string_too_short" and ctx.get("min_length"):
+                    msg = f"{field or '字段'}长度至少 {ctx['min_length']} 位"
+                if etype.startswith("value_error"):
+                    # 来自 model_validator 的 ValueError 文本
+                    msg = str(e.get("msg") or ctx.get("error") or "参数不合法")
+                simple.append({"field": field, "message": msg, "type": etype})
+            return simple
+
+        raw_errors = exc.errors()
+        friendly = _simplify_errors(_to_jsonable(raw_errors))  # type: ignore[arg-type]
+        top_msg = friendly[0]["message"] if friendly else "验证失败"
+
         payload = {
             "code": status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "message": "验证错误",
-            "data": _to_jsonable(exc.errors()),
+            "message": top_msg,
+            "data": friendly,
         }
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
 

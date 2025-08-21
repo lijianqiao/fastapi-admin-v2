@@ -12,8 +12,11 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.constants import Permission as Perm
 from app.core.dependencies import get_current_user_id, get_permission_service, has_permission
+from app.dao.role import RoleDAO
+from app.dao.role_permission import RolePermissionDAO
 from app.schemas.permission import PermissionCreate, PermissionIdsIn, PermissionOut, PermissionUpdate
 from app.schemas.response import Page, Response
+from app.schemas.role import RoleOut
 from app.services import PermissionService
 
 router = APIRouter()
@@ -71,6 +74,42 @@ async def update_permission(
     """
     await svc.update_permission(perm_id, version, data or PermissionUpdate(), actor_id=actor_id)
     return Response[None](data=None)
+
+
+@router.get(
+    "/{perm_id}/roles",
+    dependencies=[Depends(has_permission(Perm.ROLE_LIST))],
+    response_model=Response[Page[RoleOut]],
+    summary="查看权限下的角色",
+)
+async def list_roles_of_permission(
+    perm_id: int,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+    rp_dao: RolePermissionDAO = Depends(),
+    role_dao: RoleDAO = Depends(),
+) -> Response[Page[RoleOut]]:
+    """查看权限下的角色。
+    Args:
+        perm_id (int): 权限ID。
+        page (int): 页码。
+        page_size (int): 每页数量。
+        rp_dao (RolePermissionDAO): 角色权限关系数据访问对象。
+        role_dao (RoleDAO): 角色数据访问对象。
+    Returns:
+        Response[Page[RoleOut]]: 统一响应包装的分页角色列表。
+    """
+    rels = await rp_dao.list_roles_of_permission(perm_id)
+    rids = [r.role_id for r in rels]
+    items = await role_dao.get_many_by_ids(rids) if rids else []
+    start = (page - 1) * page_size
+    end = start + page_size
+    sel = items[start:end]
+    return Response[Page[RoleOut]](
+        data=Page[RoleOut](
+            items=[RoleOut.model_validate(x) for x in sel], total=len(items), page=page, page_size=page_size
+        )
+    )
 
 
 @router.get(

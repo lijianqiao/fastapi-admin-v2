@@ -21,12 +21,24 @@ class RolePermissionDAO(BaseDAO[RolePermission]):
         super().__init__(RolePermission)
 
     async def bind_permissions(self, role_id: int, permission_ids: Sequence[int]) -> None:
-        """为单个角色绑定多个权限。"""
+        """为单个角色绑定多个权限。
+
+        Args:
+            role_id (int): 角色ID。
+            permission_ids (Sequence[int]): 权限ID集合。
+
+        Returns:
+            None: 无返回。
+        """
         rows = [{"role_id": role_id, "permission_id": pid} for pid in permission_ids]
         await self.bulk_create(rows)
 
     async def unbind_permissions(self, role_id: int, permission_ids: Sequence[int]) -> int:
         """为单个角色移除多个权限。
+
+        Args:
+            role_id (int): 角色ID。
+            permission_ids (Sequence[int]): 权限ID集合。
 
         Returns:
             int: 受影响行数。
@@ -36,23 +48,60 @@ class RolePermissionDAO(BaseDAO[RolePermission]):
         )
 
     async def list_permissions_of_role(self, role_id: int) -> list[RolePermission]:
-        """查询单个角色的权限关系列表。"""
+        """查询单个角色的权限关系列表。
+
+        Args:
+            role_id (int): 角色ID。
+
+        Returns:
+            list[RolePermission]: 权限关系列表。
+        """
         return await self.alive().filter(role_id=role_id).all()
 
     async def list_by_role_ids(self, role_ids: Sequence[int]) -> list[RolePermission]:
-        """按角色ID集合查询权限关系列表。"""
+        """按角色ID集合查询权限关系列表。
+
+        Args:
+            role_ids (Sequence[int]): 角色ID集合。
+
+        Returns:
+            list[RolePermission]: 权限关系列表。
+        """
         if not role_ids:
             return []
         return await self.alive().filter(role_id__in=list(role_ids)).all()
 
+    async def list_roles_of_permission(self, permission_id: int) -> list[RolePermission]:
+        """查询某权限下的角色关系列表。
+
+        Args:
+            permission_id (int): 权限ID。
+
+        Returns:
+            list[RolePermission]: 角色关系列表。
+        """
+        return await self.alive().filter(permission_id=permission_id).all()
+
     async def bind_permissions_to_roles(self, role_ids: Sequence[int], permission_ids: Sequence[int]) -> None:
-        """为多个角色批量绑定多个权限。"""
+        """为多个角色批量绑定多个权限。
+
+        Args:
+            role_ids (Sequence[int]): 角色ID集合。
+            permission_ids (Sequence[int]): 权限ID集合。
+
+        Returns:
+            None: 无返回。
+        """
         rows = [{"role_id": rid, "permission_id": pid} for rid in role_ids for pid in permission_ids]
         if rows:
             await self.bulk_create(rows)
 
     async def unbind_permissions_from_roles(self, role_ids: Sequence[int], permission_ids: Sequence[int]) -> int:
         """为多个角色批量移除多个权限。
+
+        Args:
+            role_ids (Sequence[int]): 角色ID集合。
+            permission_ids (Sequence[int]): 权限ID集合。
 
         Returns:
             int: 受影响行数。

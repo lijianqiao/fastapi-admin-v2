@@ -17,10 +17,66 @@ from app.core.dependencies import (
     has_permission,
 )
 from app.schemas.response import Page, Response
-from app.schemas.user import UserBindIn, UserCreate, UserIdsIn, UserOut, UserQuery, UsersBindIn, UserUpdate
+from app.schemas.user import (
+    AdminChangePasswordIn,
+    SelfChangePasswordIn,
+    UserBindIn,
+    UserCreate,
+    UserIdsIn,
+    UserOut,
+    UserQuery,
+    UsersBindIn,
+    UserUpdate,
+)
 from app.services import UserService
 
 router = APIRouter()
+
+
+@router.get(
+    "/me",
+    response_model=Response[UserOut],
+    summary="获取当前用户详情（无需额外权限）",
+)
+async def get_me(
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[UserOut]:
+    """获取当前用户详情（无需额外权限）。
+
+    Args:
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[UserOut]: 统一响应包装的用户信息。
+    """
+    user = await svc.get_user(actor_id)
+    return Response[UserOut](data=user)
+
+
+@router.post(
+    "/me/password",
+    response_model=Response[None],
+    summary="用户自助修改密码（无需权限）",
+)
+async def self_change_password(
+    body: SelfChangePasswordIn,
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """用户自助修改密码。
+
+    Args:
+        body (SelfChangePasswordIn): 修改密码入参。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.self_change_password(actor_id, body, actor_id=actor_id)
+    return Response[None](data=None)
 
 
 @router.post(
@@ -149,6 +205,33 @@ async def disable_users(
         Response[None]: 统一响应包装的空数据。
     """
     await svc.disable_users(body.ids, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
+    "/{user_id}/password",
+    dependencies=[Depends(has_permission(Perm.USER_UPDATE))],
+    response_model=Response[None],
+    summary="管理员修改指定用户密码",
+)
+async def admin_change_password(
+    user_id: int,
+    body: AdminChangePasswordIn,
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """管理员修改指定用户密码。
+
+    Args:
+        user_id (int): 用户ID。
+        body (AdminChangePasswordIn): 修改密码入参。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.admin_change_password(user_id, body, actor_id=actor_id)
     return Response[None](data=None)
 
 
