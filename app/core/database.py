@@ -10,7 +10,7 @@ aerich init -t app.core.database.TORTOISE_ORM
 aerich init-db
 
 改动模型：
-aerich migrate -n "add-indexes"
+aerich migrate --name "add-indexes"
 aerich upgrade
 """
 
@@ -29,10 +29,6 @@ TORTOISE_ORM: dict[str, Any] = {
         "models": {
             "models": [
                 "app.models",
-                # "app.models.user",
-                # "app.models.role",
-                # "app.models.permission",
-                # "app.models.log",
                 "aerich.models",
             ],
             "default_connection": "default",
