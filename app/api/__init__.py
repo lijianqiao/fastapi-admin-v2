@@ -6,7 +6,11 @@
 @Docs: 版本路由
 """
 
+import datetime
+
 from fastapi import APIRouter
+
+from app.core.config import get_settings
 
 from .v1 import router as v1_router
 
@@ -14,5 +18,17 @@ api_router = APIRouter()
 
 # 注册版本路由
 api_router.include_router(v1_router, prefix="/v1")
+
+
+@api_router.get("/health", tags=["系统"])
+async def health_check():
+    """健康检查接口"""
+    return {
+        "status": "ok",
+        "version": get_settings().APP_VERSION,
+        "environment": get_settings().ENVIRONMENT,
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # 格式化时间
+    }
+
 
 __all__ = ["v1_router"]

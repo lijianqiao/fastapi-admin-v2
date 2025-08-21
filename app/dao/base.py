@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from tortoise import Model
@@ -132,7 +133,8 @@ class BaseDAO[ModelType: Model]:
         Returns:
             int: 受影响行数，0 表示冲突或不存在。
         """
-        update_data = {**data, "version": version + 1}
+        now = datetime.now(tz=UTC)
+        update_data = {**data, "version": version + 1, "updated_at": now}
         updated = await self.alive().filter(id=entity_id, version=version).update(**update_data)
         return updated
 
@@ -142,7 +144,8 @@ class BaseDAO[ModelType: Model]:
         Returns:
             int: 受影响行数。
         """
-        updated = await self.model.filter(id=entity_id, is_deleted=False).update(is_deleted=True)
+        now = datetime.now(tz=UTC)
+        updated = await self.model.filter(id=entity_id, is_deleted=False).update(is_deleted=True, updated_at=now)
         return updated
 
     async def restore(self, entity_id: int | str) -> int:
@@ -151,7 +154,8 @@ class BaseDAO[ModelType: Model]:
         Returns:
             int: 受影响行数。
         """
-        updated = await self.model.filter(id=entity_id, is_deleted=True).update(is_deleted=False)
+        now = datetime.now(tz=UTC)
+        updated = await self.model.filter(id=entity_id, is_deleted=True).update(is_deleted=False, updated_at=now)
         return updated
 
     async def hard_delete(self, entity_id: int | str) -> int:
@@ -184,9 +188,11 @@ class BaseDAO[ModelType: Model]:
             int: 累计受影响行数。
         """
         affected = 0
+        now = datetime.now(tz=UTC)
         for row in rows:
             entity_id = row.pop("id")
             version = row.pop("version")
+            row["updated_at"] = now
             affected += await self.update_with_version(entity_id, version, row)
         return affected
 
@@ -196,7 +202,8 @@ class BaseDAO[ModelType: Model]:
         Returns:
             int: 受影响行数。
         """
-        return await self.model.filter(id__in=list(ids), is_deleted=False).update(is_deleted=True)
+        now = datetime.now(tz=UTC)
+        return await self.model.filter(id__in=list(ids), is_deleted=False).update(is_deleted=True, updated_at=now)
 
     async def bulk_restore(self, ids: Sequence[int | str]) -> int:
         """批量恢复软删记录。
@@ -204,7 +211,8 @@ class BaseDAO[ModelType: Model]:
         Returns:
             int: 受影响行数。
         """
-        return await self.model.filter(id__in=list(ids), is_deleted=True).update(is_deleted=False)
+        now = datetime.now(tz=UTC)
+        return await self.model.filter(id__in=list(ids), is_deleted=True).update(is_deleted=False, updated_at=now)
 
     async def bulk_upsert(self, rows: Iterable[dict[str, Any]]) -> int:
         """批量 upsert（有 `id+version` 则乐观锁更新，否则创建）。
@@ -216,11 +224,13 @@ class BaseDAO[ModelType: Model]:
             int: 总影响条数（创建计 1，更新计影响行数）。
         """
         affected = 0
+        now = datetime.now(tz=UTC)
         for row in rows:
             if "id" in row and "version" in row:
                 entity_id = row["id"]
                 version = row["version"]
                 data = {k: v for k, v in row.items() if k not in {"id", "version"}}
+                data["updated_at"] = now
                 affected += await self.update_with_version(entity_id, version, data)
             else:
                 await self.create(row)

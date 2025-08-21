@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TypedDict, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -46,3 +46,21 @@ class Page[T](BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class RequestContext(TypedDict, total=False):
+    """请求上下文。
+
+    Attributes:
+        trace_id (str): 追踪ID。
+        path (str | None): 请求路径。
+        method (str | None): 请求方法。
+        ip (str | None): 客户端IP。
+        ua (str | None): User-Agent。
+    """
+
+    trace_id: str
+    path: str | None
+    method: str | None
+    ip: str | None
+    ua: str | None

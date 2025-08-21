@@ -17,10 +17,10 @@ from .roles import router as roles_router
 from .users import router as users_router
 
 router = APIRouter()
-router.include_router(auth_router, prefix="/auth", tags=["auth"])
-router.include_router(users_router, prefix="/users", tags=["users"])
-router.include_router(roles_router, prefix="/roles", tags=["roles"])
-router.include_router(permissions_router, prefix="/permissions", tags=["permissions"])
-router.include_router(logs_router, prefix="/logs", tags=["logs"])
+router.include_router(auth_router, prefix="/auth", tags=["认证管理"])
+router.include_router(users_router, prefix="/users", tags=["用户管理"])
+router.include_router(roles_router, prefix="/roles", tags=["角色管理"])
+router.include_router(permissions_router, prefix="/permissions", tags=["权限管理"])
+router.include_router(logs_router, prefix="/logs", tags=["日志管理"])
 
 __all__ = ["router"]

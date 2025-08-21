@@ -12,6 +12,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any, ParamSpec, TypeVar
 
+from app.core.request_context import get_request_context
 from app.dao.log import AuditLogDAO
 from app.utils.logger import logger
 
@@ -57,14 +58,19 @@ def log_operation(
             finally:
                 latency_ms = int((time.monotonic() - started_at) * 1000)
                 try:
+                    ctx = get_request_context()
                     await dao.write(
                         {
                             "actor_id": actor_id,
                             "action": action,
                             "target_id": target_id,
+                            "path": ctx.get("path"),
+                            "method": ctx.get("method"),
+                            "ip": ctx.get("ip"),
+                            "ua": ctx.get("ua"),
                             "status": status_code,
                             "latency_ms": latency_ms,
-                            "trace_id": "-",
+                            "trace_id": ctx.get("trace_id") or "-",
                             "error": error_text,
                         }
                     )

@@ -1,4 +1,10 @@
-"""Tortoise-ORM 模型导出。"""
+"""
+@Author: li
+@Email: lijianqiao2906@live.com
+@FileName: __init__.py
+@DateTime: 2025/08/21 15:18:14
+@Docs: 数据模型初始化
+"""
 
 from .base import BaseModel
 from .log import AuditLog

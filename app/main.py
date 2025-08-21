@@ -1,3 +1,11 @@
+"""
+@Author: li
+@Email: lijianqiao2906@live.com
+@FileName: main.py
+@DateTime: 2025/08/21 15:20:20
+@Docs: 主应用
+"""
+
 from __future__ import annotations
 
 from fastapi import FastAPI
@@ -28,14 +36,6 @@ def create_app() -> FastAPI:
     # 中间件必须在应用启动前添加
     setup_middlewares(app)
     install_exception_handlers(app)
-
-    @app.get("/health")
-    async def health() -> dict[str, str]:
-        """健康检查
-        Returns:
-            dict[str, str]: 健康检查结果
-        """
-        return {"status": "ok"}
 
     # v1 API
     app.include_router(api_router, prefix=settings.API_PREFIX)

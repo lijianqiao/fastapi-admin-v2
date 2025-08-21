@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.database import close_database, init_database
+from app.middlewares.request_context import RequestContextMiddleware
 from app.utils.cache import close_redis
 from app.utils.logger import logger, setup_logger
 
@@ -30,6 +31,10 @@ def setup_middlewares(app: FastAPI) -> None:
     Returns:
         None: 无返回
     """
+    app.add_middleware(
+        RequestContextMiddleware,
+    )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
