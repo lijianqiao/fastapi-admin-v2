@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.dependencies import get_auth_service
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
@@ -18,16 +19,20 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=TokenOut, summary="登录获取令牌")
-async def login(data: LoginIn, svc: AuthService = Depends(get_auth_service)) -> TokenOut:
+async def login(
+    form: OAuth2PasswordRequestForm = Depends(),
+    svc: AuthService = Depends(get_auth_service),
+) -> TokenOut:
     """登录获取令牌。
 
     Args:
-        data (LoginIn): 登录凭证。
+        form (OAuth2PasswordRequestForm): OAuth2 表单登录（username、password）。
         svc (AuthService): 认证服务依赖。
 
     Returns:
         TokenOut: access_token 与 refresh_token。
     """
+    data = LoginIn(username=form.username, password=form.password)
     return await svc.login(data)
 
 

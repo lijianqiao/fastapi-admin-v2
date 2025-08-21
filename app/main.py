@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.api.v1 import router as api_v1_router
+from app.api import api_router
 from app.core.config import get_settings
 from app.core.exceptions import install_exception_handlers
 from app.core.lifespan import lifespan, setup_middlewares
@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # v1 API
-    app.include_router(api_v1_router, prefix=settings.API_PREFIX)
+    app.include_router(api_router, prefix=settings.API_PREFIX)
 
     return app
 

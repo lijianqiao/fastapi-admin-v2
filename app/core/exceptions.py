@@ -101,7 +101,27 @@ def install_exception_handlers(app: FastAPI) -> None:
         Returns:
             JSONResponse: 响应
         """
-        payload = {"code": status.HTTP_422_UNPROCESSABLE_ENTITY, "message": "验证错误", "data": exc.errors()}
+
+        def _to_jsonable(obj: Any) -> Any:
+            # 递归转换 bytes -> str，集合 -> 列表，其他不可序列化类型转字符串
+            if isinstance(obj, bytes):
+                try:
+                    return obj.decode("utf-8", errors="ignore")
+                except Exception:  # noqa: BLE001
+                    return str(obj)
+            if isinstance(obj, list | tuple):
+                return [_to_jsonable(i) for i in obj]
+            if isinstance(obj, dict):
+                return {k: _to_jsonable(v) for k, v in obj.items()}
+            if isinstance(obj, set):
+                return [_to_jsonable(i) for i in obj]
+            return obj
+
+        payload = {
+            "code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "message": "验证错误",
+            "data": _to_jsonable(exc.errors()),
+        }
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
 
     @app.exception_handler(Exception)
