@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.database import close_database, init_database
+from app.core.metrics import MetricsMiddleware, get_metrics_router, scrape_runtime_metrics
 from app.middlewares.request_context import RequestContextMiddleware
 from app.utils.cache import close_redis
 from app.utils.logger import logger, setup_logger
@@ -42,6 +43,10 @@ def setup_middlewares(app: FastAPI) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # 指标中间件
+    app.add_middleware(MetricsMiddleware)
+    # 暴露 /metrics
+    app.include_router(get_metrics_router())
 
 
 @asynccontextmanager
@@ -60,6 +65,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         environment = "development"
     setup_logger(cast(Literal["development", "testing", "production"], environment))
     await init_database()
+    # 启动时抓一次运行期指标
+    try:
+        await scrape_runtime_metrics()
+    except Exception:
+        pass
     logger.info("应用启动完成")
     try:
         yield

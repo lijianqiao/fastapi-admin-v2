@@ -12,6 +12,7 @@ import datetime as dt
 from typing import Any
 
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
@@ -117,6 +118,8 @@ def decode_token(token: str) -> dict[str, Any]:
     """
     try:
         return jwt.decode(token, get_settings().JWT_SECRET_KEY, algorithms=[get_settings().JWT_ALGORITHM])
+    except ExpiredSignatureError as exc:
+        raise unauthorized("令牌已过期") from exc
     except JWTError as exc:
         raise unauthorized("令牌无效") from exc
 
