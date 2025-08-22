@@ -31,6 +31,7 @@ class Permission(StrEnum):
     USER_UNBIND_ROLES = "user:unbind_roles"
     USER_BIND_ROLES_BATCH = "user:bind_roles_batch"
     USER_UNBIND_ROLES_BATCH = "user:unbind_roles_batch"
+    USER_UNLOCK = "user:unlock"
 
     ROLE_LIST = "role:list"
     ROLE_CREATE = "role:create"

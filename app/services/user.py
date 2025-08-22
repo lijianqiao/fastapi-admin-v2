@@ -261,4 +261,22 @@ class UserService(BaseService):
         if payload.new_password != payload.confirm_password:
             raise conflict("两次密码不一致")
         hashed = hash_password(payload.new_password)
-        await self.dao.update_with_version(int(user.id), version=user.version, data={"password_hash": hashed})
+        await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
+
+    @log_operation(action=Perm.USER_UNLOCK)
+    async def unlock_user(self, user_id: int, *, actor_id: int | None = None) -> None:
+        """解锁用户（清除锁定与失败计数）。
+
+        Args:
+            user_id (int): 用户ID。
+            actor_id (int | None): 操作者ID。
+
+        Returns:
+            None: 无返回。
+        """
+        user = await self.dao.get_by_id(user_id)
+        if not user:
+            raise not_found("用户不存在")
+        await self.dao.update_with_version(
+            user.id, version=user.version, data={"failed_attempts": 0, "locked_until": None}
+        )

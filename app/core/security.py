@@ -118,7 +118,7 @@ def decode_token(token: str) -> dict[str, Any]:
     try:
         return jwt.decode(token, get_settings().JWT_SECRET_KEY, algorithms=[get_settings().JWT_ALGORITHM])
     except JWTError as exc:
-        raise unauthorized("Invalid token") from exc
+        raise unauthorized("令牌无效") from exc
 
 
 __all__ = [

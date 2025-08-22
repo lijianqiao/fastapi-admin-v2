@@ -236,6 +236,31 @@ async def admin_change_password(
 
 
 @router.post(
+    "/{user_id}/unlock",
+    dependencies=[Depends(has_permission(Perm.USER_UNLOCK))],
+    response_model=Response[None],
+    summary="解锁用户（清除锁定与失败计数）",
+)
+async def unlock_user(
+    user_id: int,
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """解锁用户（清除锁定与失败计数）。
+
+    Args:
+        user_id (int): 用户ID。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.unlock_user(user_id, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
     "/bind-roles",
     dependencies=[Depends(has_permission(Perm.USER_BIND_ROLES))],
     response_model=Response[None],

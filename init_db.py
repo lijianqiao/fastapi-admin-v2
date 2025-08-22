@@ -16,6 +16,7 @@ from tortoise import Tortoise
 
 from app.core.config import get_settings
 from app.core.database import TORTOISE_ORM
+from app.core.permissions import bump_perm_version
 from app.core.security import hash_password
 from app.models import Permission, Role, RolePermission, User, UserRole
 from app.utils.builtin_rbac import get_builtin_permissions, get_builtin_roles, get_role_permission_map
@@ -124,6 +125,12 @@ async def seed_builtin() -> None:
         _, ur_created = await UserRole.get_or_create(user_id=int(user.id), role_id=super_role_id)
     else:
         ur_created = False
+    # 重建基础 RBAC 数据后，提升权限缓存的全局版本，强制失效旧缓存
+    try:
+        new_ver = await bump_perm_version()
+        logger.info("已提升权限缓存版本：version={ver}", ver=new_ver)
+    except Exception as _exc:
+        logger.warning("提升权限缓存版本失败：{err}", err=str(_exc))
 
     await Tortoise.close_connections()
     logger.info(
