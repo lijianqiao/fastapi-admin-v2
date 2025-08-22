@@ -145,6 +145,20 @@ class RoleService(BaseService):
         """
         return await (self.dao.hard_delete_role(role_id) if hard else self.dao.delete_role(role_id))
 
+    @log_operation(action=Perm.ROLE_DELETE)
+    async def delete_roles(self, ids: list[int], *, hard: bool = False, actor_id: int | None = None) -> int:
+        """批量删除角色（默认软删，hard=True 硬删）。
+
+        Args:
+            ids (list[int]): 角色ID列表。
+            hard (bool): 是否硬删。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await (self.dao.bulk_hard_delete_roles(ids) if hard else self.dao.bulk_delete_roles(ids))
+
     async def list_all_roles(
         self, *, include_deleted: bool, include_disabled: bool, page: int, page_size: int
     ) -> Page[RoleOut]:

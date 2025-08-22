@@ -268,6 +268,56 @@ async def list_all_users(
 
 
 @router.post(
+    "/delete",
+    dependencies=[Depends(has_permission(Perm.USER_BULK_DELETE))],
+    response_model=Response[None],
+    summary="批量删除用户（软删除）",
+)
+async def delete_users(
+    body: UserIdsIn,
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """批量删除用户（软删除）。
+
+    Args:
+        body (UserIdsIn): 用户ID列表。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_users(body.ids, hard=False, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
+    "/delete/hard",
+    dependencies=[Depends(has_permission(Perm.USER_HARD_DELETE))],
+    response_model=Response[None],
+    summary="批量删除用户（硬删除，不可恢复）",
+)
+async def delete_users_hard(
+    body: UserIdsIn,
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """批量删除用户（硬删除）。
+
+    Args:
+        body (UserIdsIn): 用户ID列表。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_users(body.ids, hard=True, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
     "/{user_id}/password",
     dependencies=[Depends(has_permission(Perm.USER_UPDATE))],
     response_model=Response[None],

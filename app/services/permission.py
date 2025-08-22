@@ -140,6 +140,23 @@ class PermissionService(BaseService):
             await bump_perm_version()
         return affected
 
+    @log_operation(action=Perm.PERMISSION_DELETE)
+    async def delete_permissions(self, ids: list[int], *, hard: bool = False, actor_id: int | None = None) -> int:
+        """批量删除权限（默认软删，hard=True 硬删）。
+
+        Args:
+            ids (list[int]): 权限ID列表。
+            hard (bool): 是否硬删。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
+        affected = await (self.dao.bulk_hard_delete_permissions(ids) if hard else self.dao.bulk_delete_permissions(ids))
+        if affected:
+            await bump_perm_version()
+        return affected
+
     async def list_all_permissions(
         self, *, include_deleted: bool, include_disabled: bool, page: int, page_size: int
     ) -> Page[PermissionOut]:

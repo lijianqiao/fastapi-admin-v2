@@ -244,6 +244,56 @@ async def list_all_roles(
 
 
 @router.post(
+    "/delete",
+    dependencies=[Depends(has_permission(Perm.ROLE_BULK_DELETE))],
+    response_model=Response[None],
+    summary="批量删除角色（软删除）",
+)
+async def delete_roles(
+    body: RoleIdsIn,
+    svc: RoleService = Depends(get_role_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """批量删除角色（软删除）。
+
+    Args:
+        body (RoleIdsIn): 角色ID列表。
+        svc (RoleService): 角色服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_roles(body.ids, hard=False, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
+    "/delete/hard",
+    dependencies=[Depends(has_permission(Perm.ROLE_HARD_DELETE))],
+    response_model=Response[None],
+    summary="批量删除角色（硬删除，不可恢复）",
+)
+async def delete_roles_hard(
+    body: RoleIdsIn,
+    svc: RoleService = Depends(get_role_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """批量删除角色（硬删除）。
+
+    Args:
+        body (RoleIdsIn): 角色ID列表。
+        svc (RoleService): 角色服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_roles(body.ids, hard=True, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
     "/bind-permissions",
     dependencies=[Depends(has_permission(Perm.ROLE_BIND_PERMISSIONS))],
     response_model=Response[BindStats],

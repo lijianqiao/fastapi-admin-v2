@@ -189,6 +189,20 @@ class UserService(BaseService):
         affected = await (self.dao.hard_delete_user(user_id) if hard else self.dao.delete_user(user_id))
         return affected
 
+    @log_operation(action=Perm.USER_DELETE)
+    async def delete_users(self, ids: list[int], *, hard: bool = False, actor_id: int | None = None) -> int:
+        """批量删除用户（默认软删，hard=True 硬删）。
+
+        Args:
+            ids (list[int]): 用户ID列表。
+            hard (bool): 是否硬删。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await (self.dao.bulk_hard_delete_users(ids) if hard else self.dao.bulk_delete_users(ids))
+
     async def list_all_users(
         self, *, include_deleted: bool, include_disabled: bool, page: int, page_size: int
     ) -> Page[UserOut]:

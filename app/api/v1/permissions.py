@@ -241,3 +241,53 @@ async def list_all_permissions(
         include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
     )
     return Response[Page[PermissionOut]](data=data)
+
+
+@router.post(
+    "/delete",
+    dependencies=[Depends(has_permission(Perm.PERMISSION_BULK_DELETE))],
+    response_model=Response[None],
+    summary="批量删除权限（软删除）",
+)
+async def delete_permissions(
+    body: PermissionIdsIn,
+    svc: PermissionService = Depends(get_permission_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """批量删除权限（软删除）。
+
+    Args:
+        body (PermissionIdsIn): 权限ID列表。
+        svc (PermissionService): 权限服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_permissions(body.ids, hard=False, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.post(
+    "/delete/hard",
+    dependencies=[Depends(has_permission(Perm.PERMISSION_HARD_DELETE))],
+    response_model=Response[None],
+    summary="批量删除权限（硬删除，不可恢复）",
+)
+async def delete_permissions_hard(
+    body: PermissionIdsIn,
+    svc: PermissionService = Depends(get_permission_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """批量删除权限（硬删除）。
+
+    Args:
+        body (PermissionIdsIn): 权限ID列表。
+        svc (PermissionService): 权限服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_permissions(body.ids, hard=True, actor_id=actor_id)
+    return Response[None](data=None)

@@ -116,3 +116,28 @@ class UserDAO(BaseDAO[User]):
             int: 受影响行数。
         """
         return await self.hard_delete(user_id)
+
+    async def bulk_delete_users(self, user_ids: Sequence[int]) -> int:
+        """批量软删除用户。
+
+        Args:
+            user_ids (Sequence[int]): 用户ID集合。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await self.bulk_soft_delete(user_ids)
+
+    async def bulk_hard_delete_users(self, user_ids: Sequence[int]) -> int:
+        """批量硬删除用户（谨慎）。
+
+        Args:
+            user_ids (Sequence[int]): 用户ID集合。
+
+        Returns:
+            int: 受影响行数。
+        """
+        affected = 0
+        for uid in user_ids:
+            affected += await self.hard_delete(uid)
+        return affected

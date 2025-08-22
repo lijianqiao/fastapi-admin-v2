@@ -90,10 +90,27 @@ class RoleDAO(BaseDAO[Role]):
         """
         return await self.alive().filter(id__in=list(role_ids)).update(is_active=False)
 
-    async def list_all(self) -> list[Role]:
-        """列出全部角色（未软删），按名称升序。
+    async def bulk_delete_roles(self, role_ids: Sequence[int]) -> int:
+        """批量软删除角色。
+
+        Args:
+            role_ids (Sequence[int]): 角色ID集合。
 
         Returns:
-            list[Role]: 角色列表。
+            int: 受影响行数。
         """
-        return await self.alive().order_by("name").all()
+        return await self.bulk_soft_delete(role_ids)
+
+    async def bulk_hard_delete_roles(self, role_ids: Sequence[int]) -> int:
+        """批量硬删除角色（谨慎）。
+
+        Args:
+            role_ids (Sequence[int]): 角色ID集合。
+
+        Returns:
+            int: 受影响行数。
+        """
+        affected = 0
+        for rid in role_ids:
+            affected += await self.hard_delete(rid)
+        return affected
