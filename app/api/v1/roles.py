@@ -185,6 +185,64 @@ async def disable_roles(
     return Response[None](data=None)
 
 
+@router.delete(
+    "/{role_id}",
+    dependencies=[Depends(has_permission(Perm.ROLE_DELETE))],
+    response_model=Response[None],
+    summary="删除角色（默认软删，hard=True 为硬删）",
+)
+async def delete_role(
+    role_id: int,
+    hard: bool = Query(False),
+    svc: RoleService = Depends(get_role_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """删除角色（默认软删，hard=True 为硬删）。
+
+    Args:
+        role_id (int): 角色ID。
+        hard (bool): 是否硬删（默认软删）。
+        svc (RoleService): 角色服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_role(role_id, hard=hard, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.get(
+    "/all",
+    dependencies=[Depends(has_permission(Perm.ROLE_LIST_ALL))],
+    response_model=Response[Page[RoleOut]],
+    summary="获取所有角色列表（可包含软删/禁用）",
+)
+async def list_all_roles(
+    include_deleted: bool = Query(True),
+    include_disabled: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+    svc: RoleService = Depends(get_role_service),
+) -> Response[Page[RoleOut]]:
+    """获取所有角色列表（可包含软删/禁用）。
+
+    Args:
+        include_deleted (bool): 是否包含软删。
+        include_disabled (bool): 是否包含禁用。
+        page (int): 页码。
+        page_size (int): 每页数量。
+        svc (RoleService): 角色服务依赖。
+
+    Returns:
+        Response[Page[RoleOut]]: 统一响应包装的分页角色列表。
+    """
+    data = await svc.list_all_roles(
+        include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
+    )
+    return Response[Page[RoleOut]](data=data)
+
+
 @router.post(
     "/bind-permissions",
     dependencies=[Depends(has_permission(Perm.ROLE_BIND_PERMISSIONS))],

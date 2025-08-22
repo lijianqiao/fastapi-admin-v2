@@ -174,6 +174,42 @@ class UserService(BaseService):
         """
         return await self.dao.disable_users(ids)
 
+    @log_operation(action=Perm.USER_DELETE)
+    async def delete_user(self, user_id: int, *, hard: bool = False, actor_id: int | None = None) -> int:
+        """删除用户（默认软删，hard=True 则硬删）。
+
+        Args:
+            user_id (int): 用户ID。
+            hard (bool): 是否硬删。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
+        affected = await (self.dao.hard_delete_user(user_id) if hard else self.dao.delete_user(user_id))
+        return affected
+
+    async def list_all_users(
+        self, *, include_deleted: bool, include_disabled: bool, page: int, page_size: int
+    ) -> Page[UserOut]:
+        """列出全部用户（未软删），按ID降序。
+
+        Args:
+            include_deleted (bool): 是否包含软删。
+            include_disabled (bool): 是否包含禁用。
+            page (int): 页码。
+            page_size (int): 每页数量。
+
+        Returns:
+            Page[UserOut]: 分页结果。
+        """
+        items, total = await self.dao.list_all(
+            include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
+        )
+        return Page[UserOut](
+            items=[UserOut.model_validate(x) for x in items], total=total, page=page, page_size=page_size
+        )
+
     @log_operation(action=Perm.USER_BIND_ROLES)
     async def bind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> None:
         """为用户绑定角色。

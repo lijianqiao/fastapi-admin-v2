@@ -71,3 +71,48 @@ class UserDAO(BaseDAO[User]):
         total = await q.count()
         items = await q.order_by("-id").offset((page - 1) * page_size).limit(page_size)
         return items, total
+
+    async def list_all(
+        self, *, include_deleted: bool = True, include_disabled: bool = True, page: int = 1, page_size: int = 20
+    ) -> tuple[list[User], int]:
+        """全量列表（可包含软删/禁用）。
+
+        Args:
+            include_deleted (bool): 是否包含软删。
+            include_disabled (bool): 是否包含禁用。
+            page (int): 页码。
+            page_size (int): 每页数量。
+
+        Returns:
+            tuple[list[User], int]: (items, total)。
+        """
+        q = self.model.all()
+        if not include_deleted:
+            q = q.filter(is_deleted=False)
+        if not include_disabled:
+            q = q.filter(is_active=True)
+        total = await q.count()
+        items = await q.order_by("-id").offset((page - 1) * page_size).limit(page_size)
+        return items, total
+
+    async def delete_user(self, user_id: int) -> int:
+        """软删除用户。
+
+        Args:
+            user_id (int): 用户ID。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await self.soft_delete(user_id)
+
+    async def hard_delete_user(self, user_id: int) -> int:
+        """硬删除用户。
+
+        Args:
+            user_id (int): 用户ID。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await self.hard_delete(user_id)

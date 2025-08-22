@@ -68,3 +68,48 @@ class PermissionDAO(BaseDAO[Permission]):
             list[Permission]: 权限列表。
         """
         return await self.alive().filter(code__in=list(codes)).all()
+
+    async def list_all(
+        self, *, include_deleted: bool = True, include_disabled: bool = True, page: int = 1, page_size: int = 20
+    ) -> tuple[list[Permission], int]:
+        """列出全部权限（未软删），按ID降序。
+
+        Args:
+            include_deleted (bool): 是否包含软删。
+            include_disabled (bool): 是否包含禁用。
+            page (int): 页码。
+            page_size (int): 每页数量。
+
+        Returns:
+            tuple[list[Permission], int]: (items, total)。
+        """
+        q = self.model.all()
+        if not include_deleted:
+            q = q.filter(is_deleted=False)
+        if not include_disabled:
+            q = q.filter(is_active=True)
+        total = await q.count()
+        items = await q.order_by("-id").offset((page - 1) * page_size).limit(page_size)
+        return items, total
+
+    async def delete_permission(self, perm_id: int) -> int:
+        """软删除权限。
+
+        Args:
+            perm_id (int): 权限ID。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await self.soft_delete(perm_id)
+
+    async def hard_delete_permission(self, perm_id: int) -> int:
+        """硬删除权限。
+
+        Args:
+            perm_id (int): 权限ID。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await self.hard_delete(perm_id)

@@ -25,6 +25,7 @@ class Permission(StrEnum):
     USER_CREATE = "user:create"
     USER_UPDATE = "user:update"
     USER_DELETE = "user:delete"
+    USER_HARD_DELETE = "user:hard_delete"
     USER_BULK_DELETE = "user:bulk_delete"
     USER_DISABLE = "user:disable"
     USER_BIND_ROLES = "user:bind_roles"
@@ -37,6 +38,7 @@ class Permission(StrEnum):
     ROLE_CREATE = "role:create"
     ROLE_UPDATE = "role:update"
     ROLE_DELETE = "role:delete"
+    ROLE_HARD_DELETE = "role:hard_delete"
     ROLE_BULK_DELETE = "role:bulk_delete"
     ROLE_DISABLE = "role:disable"
     ROLE_BIND_PERMISSIONS = "role:bind_permissions"
@@ -48,10 +50,17 @@ class Permission(StrEnum):
     PERMISSION_CREATE = "permission:create"
     PERMISSION_UPDATE = "permission:update"
     PERMISSION_DELETE = "permission:delete"
+    PERMISSION_HARD_DELETE = "permission:hard_delete"
     PERMISSION_BULK_DELETE = "permission:bulk_delete"
     PERMISSION_DISABLE = "permission:disable"
 
     LOG_LIST = "log:list"
+    LOG_SELF = "log:self"
+
+    # 扩展列表（含软删/禁用/活跃）
+    USER_LIST_ALL = "user:list_all"
+    ROLE_LIST_ALL = "role:list_all"
+    PERMISSION_LIST_ALL = "permission:list_all"
 
 
 __all__ = ["Permission"]

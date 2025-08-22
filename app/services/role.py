@@ -131,6 +131,41 @@ class RoleService(BaseService):
         """
         return await self.dao.disable_roles(ids)
 
+    @log_operation(action=Perm.ROLE_DELETE)
+    async def delete_role(self, role_id: int, *, hard: bool = False, actor_id: int | None = None) -> int:
+        """删除角色（默认软删，hard=True 则硬删）。
+
+        Args:
+            role_id (int): 角色ID。
+            hard (bool): 是否硬删。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
+        return await (self.dao.hard_delete_role(role_id) if hard else self.dao.delete_role(role_id))
+
+    async def list_all_roles(
+        self, *, include_deleted: bool, include_disabled: bool, page: int, page_size: int
+    ) -> Page[RoleOut]:
+        """列出全部角色（未软删），按ID降序。
+
+        Args:
+            include_deleted (bool): 是否包含软删。
+            include_disabled (bool): 是否包含禁用。
+            page (int): 页码。
+            page_size (int): 每页数量。
+
+        Returns:
+            Page[RoleOut]: 分页结果。
+        """
+        items, total = await self.dao.list_all(
+            include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
+        )
+        return Page[RoleOut](
+            items=[RoleOut.model_validate(x) for x in items], total=total, page=page, page_size=page_size
+        )
+
     @log_operation(action=Perm.ROLE_BIND_PERMISSIONS)
     async def bind_permissions(self, data: RoleBindIn, *, actor_id: int | None = None) -> BindStats:
         """为角色绑定权限。

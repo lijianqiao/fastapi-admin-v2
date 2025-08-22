@@ -122,3 +122,41 @@ class PermissionService(BaseService):
         if affected:
             await bump_perm_version()
         return affected
+
+    @log_operation(action=Perm.PERMISSION_DELETE)
+    async def delete_permission(self, perm_id: int, *, hard: bool = False, actor_id: int | None = None) -> int:
+        """删除权限（默认软删，hard=True 则硬删）。
+
+        Args:
+            perm_id (int): 权限ID。
+            hard (bool): 是否硬删。
+            actor_id (int | None): 操作者ID，用于审计日志记录。
+
+        Returns:
+            int: 受影响行数。
+        """
+        affected = await (self.dao.hard_delete_permission(perm_id) if hard else self.dao.delete_permission(perm_id))
+        if affected:
+            await bump_perm_version()
+        return affected
+
+    async def list_all_permissions(
+        self, *, include_deleted: bool, include_disabled: bool, page: int, page_size: int
+    ) -> Page[PermissionOut]:
+        """列出全部权限（未软删），按ID降序。
+
+        Args:
+            include_deleted (bool): 是否包含软删。
+            include_disabled (bool): 是否包含禁用。
+            page (int): 页码。
+            page_size (int): 每页数量。
+
+        Returns:
+            Page[PermissionOut]: 分页结果。
+        """
+        items, total = await self.dao.list_all(
+            include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
+        )
+        return Page[PermissionOut](
+            items=[PermissionOut.model_validate(x) for x in items], total=total, page=page, page_size=page_size
+        )
