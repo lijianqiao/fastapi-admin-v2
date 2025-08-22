@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import phonenumbers
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic.config import ConfigDict
 
@@ -20,25 +21,54 @@ class UserCreate(BaseModel):
     """创建用户入参。"""
 
     username: str = Field(min_length=3, max_length=64)
-    phone: str = Field(min_length=6, max_length=20, pattern=r"^\d{6,20}$")
+    phone: str = Field(min_length=6, max_length=20)
     email: EmailStr
     password: str = Field(min_length=6, max_length=64)
     nickname: str = Field(max_length=64)
     bio: str | None = Field(default=None, max_length=1000)
     avatar_url: str | None = Field(default=None, max_length=255)
 
+    @model_validator(mode="after")
+    def _validate_phone(self) -> UserCreate:
+        """使用 phonenumbers 校验手机号，默认 CN 区号。
+
+        兼容传入本地号（无国家码）与 E.164（+8613800000000）。
+        """
+        raw = self.phone or ""
+        try:
+            # 优先按本地区号 CN 解析；若已含国家码则也能识别
+            parsed = phonenumbers.parse(raw, "CN")
+            if not phonenumbers.is_valid_number(parsed):
+                raise ValueError
+        except Exception as e:
+            raise unprocessable("手机号格式不正确") from e
+        return self
+
 
 class UserUpdate(BaseModel):
     """更新用户入参（部分字段可选）。"""
 
     username: str | None = Field(default=None, min_length=3, max_length=64)
-    phone: str | None = Field(default=None, min_length=6, max_length=20, pattern=r"^\d{6,20}$")
+    phone: str | None = Field(default=None, min_length=6, max_length=20)
     email: EmailStr | None = None
     password: str | None = Field(default=None, min_length=6, max_length=64)
     is_active: bool | None = None
     nickname: str | None = Field(default=None, max_length=64)
     bio: str | None = Field(default=None, max_length=1000)
     avatar_url: str | None = Field(default=None, max_length=255)
+
+    @model_validator(mode="after")
+    def _validate_phone(self) -> UserUpdate:
+        """使用 phonenumbers 校验可选手机号。"""
+        if self.phone is None:
+            return self
+        try:
+            parsed = phonenumbers.parse(self.phone, "CN")
+            if not phonenumbers.is_valid_number(parsed):
+                raise ValueError
+        except Exception as e:
+            raise unprocessable("手机号格式不正确") from e
+        return self
 
 
 class UserQuery(BaseModel):

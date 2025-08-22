@@ -17,6 +17,7 @@ from app.core.security import create_access_token, create_refresh_token, decode_
 from app.dao.user import UserDAO
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
 from app.utils.cache_manager import get_cache_manager
+from app.utils.logger import logger
 
 
 def _user_ver_key(user_id: int) -> str:
@@ -49,6 +50,11 @@ class AuthService:
         if not user:
             # 把 `username` 当作 phone 尝试
             user = await self.user_dao.find_by_phone(data.username)
+        # 获取 user 后优先检查禁用
+        if user and not getattr(user, "is_active", True):
+            logger.warning(f"登录失败：账号已禁用 user_id={user.id}")
+            raise forbidden("账号已禁用")
+
         # 锁定检查
 
         if user and user.locked_until:
@@ -59,12 +65,21 @@ class AuthService:
             except Exception:
                 lu = now
             if lu > now:
+                logger.warning(f"登录失败：账号锁定中 user_id={user.id} locked_until={lu.isoformat()}")
                 raise forbidden("账户已锁定，请稍后再试")
 
         # 校验密码；失败则累加失败次数并可能锁定
         if not user or not verify_password(data.password, user.password_hash):
-            # 未找到用户直接返回统一错误，避免用户枚举；不更新计数
+            # 未找到用户：为运维日志尝试区分“已删除/不存在”，对外仍统一提示
             if not user:
+                # 二次探测（包含软删）仅用于日志
+                any_user = await self.user_dao.model.filter(username=data.username).first()
+                if not any_user:
+                    any_user = await self.user_dao.model.filter(phone=data.username).first()
+                if any_user and getattr(any_user, "is_deleted", False):
+                    logger.warning(f"登录失败：账号已删除 user_id={any_user.id} username_or_phone={data.username}")
+                else:
+                    logger.warning(f"登录失败：用户不存在 username_or_phone={data.username}")
                 raise unauthorized("用户名或密码错误")
 
             settings = get_settings()
@@ -91,7 +106,12 @@ class AuthService:
                 updated_at=now,
             )
             if locked_until:
+                logger.warning(f"登录失败：连续失败触发锁定 user_id={user.id} until={locked_until.isoformat()}")
                 raise forbidden("账户已锁定，请稍后再试")
+            remaining = max_attempts - next_failed
+            logger.warning(
+                f"登录失败：密码错误 user_id={user.id} attempts={next_failed}/{max_attempts} remaining={remaining}"
+            )
             raise unauthorized("用户名或密码错误")
         # 读取用户令牌版本（默认 1）
         cm = get_cache_manager()
@@ -129,6 +149,11 @@ class AuthService:
         cm = get_cache_manager()
         current_ver = await cm.get_version(_user_ver_key(user_id), default=1)
         if ver != current_ver:
+            raise unauthorized("令牌已失效，请重新登录")
+        # 刷新前校验账号状态（禁用/软删）——仅日志区分，对外保持统一文案
+        user = await self.user_dao.get_by_id(user_id)
+        if (not user) or (not getattr(user, "is_active", True)):
+            logger.warning(f"刷新失败：账号已禁用或已删除 user_id={user_id}")
             raise unauthorized("令牌已失效，请重新登录")
         # 颁发新对
         access = create_access_token(sub, extra_claims={"ver": current_ver, "typ": "access"})
