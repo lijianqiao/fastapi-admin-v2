@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from tortoise.transactions import in_transaction
+
 from app.dao.base import BaseDAO
 from app.models import UserRole
 
@@ -31,7 +33,8 @@ class UserRoleDAO(BaseDAO[UserRole]):
             None: 无返回。
         """
         rows = [{"user_id": user_id, "role_id": rid} for rid in role_ids]
-        await self.bulk_create(rows)
+        async with in_transaction():
+            await self.bulk_create(rows)
 
     async def unbind_roles(self, user_id: int, role_ids: Sequence[int]) -> int:
         """为单个用户移除多个角色。
@@ -43,7 +46,8 @@ class UserRoleDAO(BaseDAO[UserRole]):
         Returns:
             int: 受影响行数。
         """
-        return await self.alive().filter(user_id=user_id, role_id__in=list(role_ids)).update(is_deleted=True)
+        async with in_transaction():
+            return await self.alive().filter(user_id=user_id, role_id__in=list(role_ids)).update(is_deleted=True)
 
     async def bind_roles_to_users(self, user_ids: Sequence[int], role_ids: Sequence[int]) -> None:
         """为多个用户批量绑定多个角色。
@@ -57,7 +61,8 @@ class UserRoleDAO(BaseDAO[UserRole]):
         """
         rows = [{"user_id": uid, "role_id": rid} for uid in user_ids for rid in role_ids]
         if rows:
-            await self.bulk_create(rows)
+            async with in_transaction():
+                await self.bulk_create(rows)
 
     async def unbind_roles_from_users(self, user_ids: Sequence[int], role_ids: Sequence[int]) -> int:
         """为多个用户批量移除多个角色。
@@ -65,7 +70,12 @@ class UserRoleDAO(BaseDAO[UserRole]):
         Returns:
             int: 受影响行数。
         """
-        return await self.alive().filter(user_id__in=list(user_ids), role_id__in=list(role_ids)).update(is_deleted=True)
+        async with in_transaction():
+            return (
+                await self.alive()
+                .filter(user_id__in=list(user_ids), role_id__in=list(role_ids))
+                .update(is_deleted=True)
+            )
 
     async def list_roles_of_user(self, user_id: int) -> list[UserRole]:
         """查询单个用户的角色关系列表。

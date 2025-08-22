@@ -97,12 +97,18 @@ async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
     # 优先缓存
     if await cm.exists(key):
         user_perm_set = await cm.smembers(key)
+        # 空权限标记：当集合为空且存在同名字符串键（短TTL），直接视为无权限
+        if not user_perm_set:
+            return False
     else:
         # 回源
         user_perm_set = await _load_user_permissions_from_db(user_id)
         if user_perm_set:
             await cm.sadd(key, *list(user_perm_set))
             await cm.expire(key, 1800)
+        else:
+            # 空权限标记：写一个短TTL字符串键，避免频繁回源
+            await cm.set(key, "__empty__", ttl=60)
     # 检查
     req_set = set(required)
     return req_set.issubset(user_perm_set)
