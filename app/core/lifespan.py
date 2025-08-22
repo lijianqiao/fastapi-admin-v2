@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.database import close_database, init_database
 from app.core.metrics import MetricsMiddleware, get_metrics_router, scrape_runtime_metrics
+from app.core.permissions import bump_perm_version
 from app.middlewares.request_context import RequestContextMiddleware
 from app.utils.cache import close_redis
 from app.utils.logger import logger, setup_logger
@@ -74,6 +75,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        # 关停前提升权限版本，避免重启后命中旧缓存
+        try:
+            await bump_perm_version()
+        except Exception:
+            pass
         await close_database()
         await close_redis()
         logger.info("应用关闭完成")

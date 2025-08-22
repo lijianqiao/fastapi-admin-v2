@@ -108,4 +108,19 @@ async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
     return req_set.issubset(user_perm_set)
 
 
-__all__ = ["user_has_permissions", "bump_perm_version"]
+async def invalidate_user_permissions(user_id: int) -> None:
+    """失效指定用户的当前版本权限集合缓存。
+
+    Args:
+        user_id (int): 用户ID。
+
+    Returns:
+        None: 无返回。
+    """
+    cm = get_cache_manager()
+    version = await _get_perm_version(cm)
+    key = _cache_key(user_id, version)
+    await cm.delete(key)
+
+
+__all__ = ["user_has_permissions", "bump_perm_version", "invalidate_user_permissions"]

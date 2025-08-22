@@ -78,6 +78,15 @@ def has_permission(required: str):
         trace_id = ctx.get("trace_id") or "-"
         log = logger.bind(trace_id=trace_id)
 
+        # 状态前置校验：必须未软删且启用
+        try:
+            user = await UserDAO().alive().filter(id=user_id).first()
+        except Exception:
+            user = None
+        if not user or not getattr(user, "is_active", False):
+            log.warning(f"账号已禁用或不存在：user_id={user_id}, path={request.url.path}")
+            raise forbidden("账号已禁用")
+
         allowed = await user_has_permissions(user_id, [required])
         if not allowed:
             log.warning(f"权限不足：user_id={user_id}, required={required}, path={request.url.path}")

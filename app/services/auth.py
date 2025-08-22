@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.core.config import get_settings
 from app.core.exceptions import forbidden, unauthorized
+from app.core.permissions import invalidate_user_permissions
 from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.dao.user import UserDAO
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
@@ -143,4 +144,9 @@ class AuthService:
         # 提升用户版本号，令历史令牌全部失效
         cm = get_cache_manager()
         await cm.bump_version(_user_ver_key(user_id))
+        # 清理该用户当前版本的权限集合缓存，确保退出后首次鉴权回源
+        try:
+            await invalidate_user_permissions(user_id)
+        except Exception:
+            pass
         return None
