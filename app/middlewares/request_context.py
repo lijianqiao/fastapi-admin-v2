@@ -45,7 +45,14 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: 响应对象
         """
-        trace_id = uuid.uuid4().hex
+        # 优先使用上游传入的 X-Request-ID（若不存在或无效则生成）
+        header_rid = request.headers.get("x-request-id")
+        trace_id = header_rid.strip() if header_rid else uuid.uuid4().hex
+        if not trace_id:
+            trace_id = uuid.uuid4().hex
+        # 限制长度，避免日志注入/异常
+        if len(trace_id) > 128:
+            trace_id = trace_id[:128]
         path = request.url.path
         method = request.method
         ip = _client_ip(request)
@@ -64,6 +71,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         # 在请求周期内注入 loguru trace_id
         with logger.contextualize(trace_id=trace_id):
             response = await call_next(request)
+        # 将 trace_id 回写到响应头，便于前端/网关关联
+        try:
+            response.headers["X-Request-ID"] = trace_id
+        except Exception:  # noqa: BLE001
+            pass
         return response
 
 

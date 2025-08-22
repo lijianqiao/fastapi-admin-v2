@@ -11,8 +11,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.core.dependencies import get_auth_service
+from app.core.dependencies import get_auth_service, get_current_user_id
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
+from app.schemas.response import Response
 from app.services import AuthService
 
 router = APIRouter()
@@ -51,17 +52,20 @@ async def refresh(data: RefreshIn, svc: AuthService = Depends(get_auth_service))
 
 
 @router.post("/logout", response_model=None, summary="注销并使历史令牌失效")
-async def logout(user_id: int, svc: AuthService = Depends(get_auth_service)) -> None:
+async def logout(
+    actor_id: int = Depends(get_current_user_id), svc: AuthService = Depends(get_auth_service)
+) -> Response[dict]:
     """注销当前用户。
 
     通过提升用户的令牌版本号，使历史签发的令牌全部失效。
 
     Args:
-        user_id (int): 用户ID。
+        actor_id (int): 用户ID。
         svc (AuthService): 认证服务依赖。
 
     Returns:
         None: 无返回。
     """
-    await svc.logout(user_id)
-    return None
+    await svc.logout(actor_id)
+    result = {"msg": "注销成功"}
+    return Response[dict](data=result)

@@ -8,8 +8,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+from app.core.config import get_settings
 from app.core.exceptions import forbidden, unauthorized
 from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.dao.user import UserDAO
@@ -43,16 +44,45 @@ class AuthService:
 
         if user and user.locked_until:
             locked_until = user.locked_until
-            # 兼容 naive 时间，统一按 UTC 处理
             now = datetime.now(tz=UTC)
             try:
                 lu = locked_until if locked_until.tzinfo else locked_until.replace(tzinfo=UTC)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 lu = now
             if lu > now:
                 raise forbidden("账户已锁定，请稍后再试")
 
+        # 校验密码；失败则累加失败次数并可能锁定
         if not user or not verify_password(data.password, user.password_hash):
+            # 未找到用户直接返回统一错误，避免用户枚举；不更新计数
+            if not user:
+                raise unauthorized("用户名或密码错误")
+
+            settings = get_settings()
+            now = datetime.now(tz=UTC)
+            # 如果当前仍处于锁定窗口，直接提示
+            if user.locked_until:
+                try:
+                    lu = user.locked_until if user.locked_until.tzinfo else user.locked_until.replace(tzinfo=UTC)
+                except Exception:
+                    lu = now
+                if lu > now:
+                    raise forbidden("账户已锁定，请稍后再试")
+
+            next_failed = (user.failed_attempts or 0) + 1
+            lock_minutes = max(1, settings.LOGIN_LOCK_MINUTES)
+            max_attempts = max(1, settings.LOGIN_MAX_FAILED_ATTEMPTS)
+            locked_until = None
+            if next_failed >= max_attempts:
+                locked_until = now + timedelta(minutes=lock_minutes)
+                next_failed = 0  # 锁定后重置计数
+            await self.user_dao.model.filter(id=user.id).update(
+                failed_attempts=next_failed,
+                locked_until=locked_until,
+                updated_at=now,
+            )
+            if locked_until:
+                raise forbidden("账户已锁定，请稍后再试")
             raise unauthorized("用户名或密码错误")
         # 读取用户令牌版本（默认 1）
         cm = get_cache_manager()
@@ -60,12 +90,12 @@ class AuthService:
         access = create_access_token(str(user.id), extra_claims={"ver": ver, "typ": "access"})
         refresh = create_refresh_token(str(user.id), extra_claims={"ver": ver, "typ": "refresh"})
 
-        # 更新最近登录时间并重置失败计数
+        # 更新最近登录时间并清除锁定/失败计数
         now = datetime.now(tz=UTC)
-        # 直接更新，带 updated_at
         await self.user_dao.model.filter(id=user.id).update(
             last_login_at=now,
             failed_attempts=0,
+            locked_until=None,
             updated_at=now,
         )
         return TokenOut(access_token=access, refresh_token=refresh)

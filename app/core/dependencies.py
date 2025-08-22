@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from app.core.exceptions import forbidden, unauthorized
 from app.core.permissions import user_has_permissions
+from app.core.request_context import get_request_context
 from app.core.security import decode_token
 from app.dao.log import AuditLogDAO
 from app.dao.permission import PermissionDAO
@@ -41,7 +42,9 @@ async def get_current_user_id(
     Returns:
         int: 当前用户ID
     """
-    trace_id = request.headers.get("X-Request-ID") or "-"
+    # 从请求上下文获取 trace_id，避免与头部取值不一致
+    ctx = get_request_context()
+    trace_id = ctx.get("trace_id") or "-"
     log = logger.bind(trace_id=trace_id)
 
     payload = decode_token(token)
@@ -71,7 +74,8 @@ def has_permission(required: str):
         user_id: Annotated[int, Depends(get_current_user_id)],
         request: Request,
     ) -> None:
-        trace_id = request.headers.get("X-Request-ID") or "-"
+        ctx = get_request_context()
+        trace_id = ctx.get("trace_id") or "-"
         log = logger.bind(trace_id=trace_id)
 
         allowed = await user_has_permissions(user_id, [required])

@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_SECONDS: int = Field(default=60 * 30)  # 30分钟
     REFRESH_TOKEN_EXPIRE_SECONDS: int = Field(default=60 * 60 * 24 * 7)  # 7天
 
+    # 登录安全策略
+    LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5)
+    LOGIN_LOCK_MINUTES: int = Field(default=3)  # 锁定3分钟，避免暴力破解
+
     # 超级管理员配置
     SUPERUSER_USERNAME: str = Field(default="admin")
     SUPERUSER_PASSWORD: str = Field(default="admin@123")
