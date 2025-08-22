@@ -91,6 +91,19 @@ def setup_logger(environment: Literal["development", "testing", "production"] = 
         serialize=environment == "production",  # 生产环境输出 JSON
     )
 
+    # 错误文件日志（仅记录 ERROR 及以上），单独文件，便于运维排查
+    error_log_path = log_path.replace("app_", "error_")
+    _ensure_log_dir(error_log_path)
+    logger.add(
+        error_log_path,
+        rotation="10 MB",
+        retention="15 days",
+        encoding="utf-8",
+        enqueue=True,
+        level="ERROR",
+        serialize=environment == "production",
+    )
+
     # 通过 patcher 统一补全 extra 字段
     logger.configure(patcher=_patch)
 

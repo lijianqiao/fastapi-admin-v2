@@ -8,12 +8,15 @@
 
 from __future__ import annotations
 
+from tortoise.exceptions import IntegrityError
+
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
 from app.core.security import hash_password, verify_password
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
+from app.schemas.common import BindStats
 from app.schemas.response import Page
 from app.schemas.user import (
     AdminChangePasswordIn,
@@ -59,6 +62,9 @@ class UserService(BaseService):
             raise conflict("用户名已存在")
         if await self.dao.exists(phone=data.phone):
             raise conflict("手机号已存在")
+        if data.email is not None and data.email != "":
+            if await self.dao.exists(email=data.email):
+                raise conflict("邮箱已存在")
         # 构造持久化数据
         to_create = {
             "username": data.username,
@@ -66,7 +72,11 @@ class UserService(BaseService):
             "email": data.email,
             "password_hash": hash_password(data.password),
         }
-        user = await self.dao.create(to_create)
+        try:
+            user = await self.dao.create(to_create)
+        except IntegrityError as e:
+            # 双保险：数据库唯一约束冲突时返回友好错误
+            raise conflict("唯一约束冲突：用户名/手机号/邮箱已存在") from e
         return UserOut.model_validate(user)
 
     @log_operation(action=Perm.USER_UPDATE)
@@ -170,7 +180,7 @@ class UserService(BaseService):
         await bump_perm_version()
 
     @log_operation(action=Perm.USER_BIND_ROLES_BATCH)
-    async def bind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> None:
+    async def bind_roles_batch(self, data: UsersBindIn, *, actor_id: int | None = None) -> BindStats:
         """为多个用户批量绑定多个角色。
 
         Args:
@@ -180,8 +190,9 @@ class UserService(BaseService):
         Returns:
             None: 无返回。
         """
-        await self.user_role_dao.bind_roles_to_users(data.user_ids, data.role_ids)
+        stats = await self.user_role_dao.bind_roles_to_users(data.user_ids, data.role_ids)
         await bump_perm_version()
+        return BindStats(**stats)
 
     @log_operation(action=Perm.USER_UNBIND_ROLES)
     async def unbind_roles(self, data: UserBindIn, *, actor_id: int | None = None) -> int:

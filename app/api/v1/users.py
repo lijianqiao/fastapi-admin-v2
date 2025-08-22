@@ -16,6 +16,7 @@ from app.core.dependencies import (
     get_user_service,
     has_permission,
 )
+from app.schemas.common import BindStats
 from app.schemas.response import Page, Response
 from app.schemas.user import (
     AdminChangePasswordIn,
@@ -263,14 +264,14 @@ async def unlock_user(
 @router.post(
     "/bind-roles",
     dependencies=[Depends(has_permission(Perm.USER_BIND_ROLES))],
-    response_model=Response[None],
+    response_model=Response[BindStats],
     summary="为用户绑定角色",
 )
 async def bind_roles(
     body: UserBindIn,
     svc: UserService = Depends(get_user_service),
     actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
+) -> Response[BindStats]:
     """为用户绑定角色。
 
     Args:
@@ -281,21 +282,21 @@ async def bind_roles(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.bind_roles(body, actor_id=actor_id)
-    return Response[None](data=None)
+    stats = await svc.bind_roles_batch(UsersBindIn(user_ids=[body.user_id], role_ids=body.role_ids), actor_id=actor_id)
+    return Response[BindStats](data=stats)
 
 
 @router.post(
     "/bind-roles/batch",
     dependencies=[Depends(has_permission(Perm.USER_BIND_ROLES_BATCH))],
-    response_model=Response[None],
+    response_model=Response[BindStats],
     summary="为多个用户批量绑定角色",
 )
 async def bind_roles_batch(
     body: UsersBindIn,
     svc: UserService = Depends(get_user_service),
     actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
+) -> Response[BindStats]:
     """为多个用户批量绑定多个角色。
 
     Args:
@@ -306,8 +307,8 @@ async def bind_roles_batch(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.bind_roles_batch(body, actor_id=actor_id)
-    return Response[None](data=None)
+    stats = await svc.bind_roles_batch(body, actor_id=actor_id)
+    return Response[BindStats](data=stats)
 
 
 @router.post(

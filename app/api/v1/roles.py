@@ -14,6 +14,7 @@ from app.core.constants import Permission as Perm
 from app.core.dependencies import get_current_user_id, get_role_service, has_permission
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
+from app.schemas.common import BindStats
 from app.schemas.response import Page, Response
 from app.schemas.role import RoleBindIn, RoleCreate, RoleIdsIn, RoleOut, RolesBindIn, RoleUpdate
 from app.schemas.user import UserOut
@@ -187,14 +188,14 @@ async def disable_roles(
 @router.post(
     "/bind-permissions",
     dependencies=[Depends(has_permission(Perm.ROLE_BIND_PERMISSIONS))],
-    response_model=Response[None],
+    response_model=Response[BindStats],
     summary="为角色绑定权限",
 )
 async def bind_permissions(
     body: RoleBindIn,
     svc: RoleService = Depends(get_role_service),
     actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
+) -> Response[BindStats]:
     """为角色绑定权限。
 
     Args:
@@ -205,21 +206,21 @@ async def bind_permissions(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.bind_permissions(body, actor_id=actor_id)
-    return Response[None](data=None)
+    stats = await svc.bind_permissions(body, actor_id=actor_id)
+    return Response[BindStats](data=stats)
 
 
 @router.post(
     "/bind-permissions/batch",
     dependencies=[Depends(has_permission(Perm.ROLE_BIND_PERMISSIONS_BATCH))],
-    response_model=Response[None],
+    response_model=Response[BindStats],
     summary="为多个角色批量绑定多个权限",
 )
 async def bind_permissions_batch(
     body: RolesBindIn,
     svc: RoleService = Depends(get_role_service),
     actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
+) -> Response[BindStats]:
     """为多个角色批量绑定多个权限。
 
     Args:
@@ -230,8 +231,8 @@ async def bind_permissions_batch(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.bind_permissions_batch(body, actor_id=actor_id)
-    return Response[None](data=None)
+    stats = await svc.bind_permissions_batch(body, actor_id=actor_id)
+    return Response[BindStats](data=stats)
 
 
 @router.post(

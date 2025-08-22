@@ -8,12 +8,15 @@
 
 from __future__ import annotations
 
+from tortoise.exceptions import IntegrityError
+
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
 from app.dao.permission import PermissionDAO
 from app.dao.role import RoleDAO
 from app.dao.role_permission import RolePermissionDAO
+from app.schemas.common import BindStats
 from app.schemas.permission import PermissionOut
 from app.schemas.response import Page
 from app.schemas.role import RoleBindIn, RoleCreate, RoleOut, RolesBindIn, RoleUpdate
@@ -51,7 +54,12 @@ class RoleService(BaseService):
         """
         if await self.dao.exists(code=data.code):
             raise conflict("角色编码已存在")
-        role = await self.dao.create(data.model_dump())
+        if await self.dao.exists(name=data.name):
+            raise conflict("角色名称已存在")
+        try:
+            role = await self.dao.create(data.model_dump())
+        except IntegrityError as e:
+            raise conflict("唯一约束冲突：角色编码/名称已存在") from e
         return RoleOut.model_validate(role)
 
     @log_operation(action=Perm.ROLE_UPDATE)
@@ -73,7 +81,10 @@ class RoleService(BaseService):
         update_map = dict(data.model_dump(exclude_none=True))
         if not update_map:
             return 0
-        affected = await self.dao.update_with_version(role_id, version, update_map)
+        try:
+            affected = await self.dao.update_with_version(role_id, version, update_map)
+        except IntegrityError as e:
+            raise conflict("唯一约束冲突：角色编码/名称已存在") from e
         if affected == 0:
             raise conflict("更新冲突或记录不存在")
         return affected
@@ -121,7 +132,7 @@ class RoleService(BaseService):
         return await self.dao.disable_roles(ids)
 
     @log_operation(action=Perm.ROLE_BIND_PERMISSIONS)
-    async def bind_permissions(self, data: RoleBindIn, *, actor_id: int | None = None) -> None:
+    async def bind_permissions(self, data: RoleBindIn, *, actor_id: int | None = None) -> BindStats:
         """为角色绑定权限。
 
         Args:
@@ -131,8 +142,9 @@ class RoleService(BaseService):
         Returns:
             None: 无返回。
         """
-        await self.role_perm_dao.bind_permissions(data.role_id, data.target_ids)
+        stats = await self.role_perm_dao.bind_permissions(data.role_id, data.target_ids)
         await bump_perm_version()
+        return BindStats(**stats)
 
     async def list_permissions(self, role_id: int) -> list[PermissionOut]:
         """列出角色的权限列表。
@@ -151,7 +163,7 @@ class RoleService(BaseService):
         return [PermissionOut.model_validate(x) for x in perms]
 
     @log_operation(action=Perm.ROLE_BIND_PERMISSIONS_BATCH)
-    async def bind_permissions_batch(self, data: RolesBindIn, *, actor_id: int | None = None) -> None:
+    async def bind_permissions_batch(self, data: RolesBindIn, *, actor_id: int | None = None) -> BindStats:
         """为多个角色批量绑定多个权限。
 
         Args:
@@ -161,8 +173,9 @@ class RoleService(BaseService):
         Returns:
             None: 无返回。
         """
-        await self.role_perm_dao.bind_permissions_to_roles(data.role_ids, data.permission_ids)
+        stats = await self.role_perm_dao.bind_permissions_to_roles(data.role_ids, data.permission_ids)
         await bump_perm_version()
+        return BindStats(**stats)
 
     @log_operation(action=Perm.ROLE_UNBIND_PERMISSIONS)
     async def unbind_permissions(self, data: RoleBindIn, *, actor_id: int | None = None) -> int:

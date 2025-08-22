@@ -53,7 +53,15 @@ def log_operation(
             except Exception as exc:
                 error_text = str(exc)
                 status_code = 500
-                logger.exception(f"操作失败: action={action}, actor_id={actor_id}, target_id={target_id}")
+                # 对预期业务冲突（409）记录为 warning，避免污染 error 日志
+                from app.core.exceptions import AppError
+
+                if isinstance(exc, AppError) and getattr(exc, "status_code", 500) == 409:
+                    logger.warning(
+                        f"业务冲突: action={action}, actor_id={actor_id}, target_id={target_id}, detail={error_text}"
+                    )
+                else:
+                    logger.exception(f"操作失败: action={action}, actor_id={actor_id}, target_id={target_id}")
                 raise
             finally:
                 latency_ms = int((time.monotonic() - started_at) * 1000)

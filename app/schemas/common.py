@@ -21,3 +21,17 @@ class Pagination(BaseModel):
 
     page: int = Field(default=1, ge=1, description="页码，从1开始")
     page_size: int = Field(default=20, ge=1, le=200, description="分页大小")
+
+
+class BindStats(BaseModel):
+    """绑定/解绑统计。
+
+    Attributes:
+        added (int): 新增绑定数量。
+        restored (int): 恢复软删数量。
+        existed (int): 已存在且未软删的数量。
+    """
+
+    added: int = Field(default=0)
+    restored: int = Field(default=0)
+    existed: int = Field(default=0)

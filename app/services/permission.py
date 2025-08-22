@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from tortoise.exceptions import IntegrityError
+
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
@@ -40,7 +42,12 @@ class PermissionService(BaseService):
         """
         if await self.dao.exists(code=data.code):
             raise conflict("权限编码已存在")
-        perm = await self.dao.create(data.model_dump())
+        if await self.dao.exists(name=data.name):
+            raise conflict("权限名称已存在")
+        try:
+            perm = await self.dao.create(data.model_dump())
+        except IntegrityError as e:
+            raise conflict("唯一约束冲突：权限编码/名称已存在") from e
         await bump_perm_version()
         return PermissionOut.model_validate(perm)
 
@@ -62,7 +69,10 @@ class PermissionService(BaseService):
         update_map = dict(data.model_dump(exclude_none=True).items())
         if not update_map:
             return 0
-        affected = await self.dao.update_with_version(perm_id, version, update_map)
+        try:
+            affected = await self.dao.update_with_version(perm_id, version, update_map)
+        except IntegrityError as e:
+            raise conflict("唯一约束冲突：权限编码/名称已存在") from e
         if affected == 0:
             raise conflict("更新冲突或记录不存在")
         await bump_perm_version()
