@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     HOST: str = Field(default="0.0.0.0")
     PORT: int = Field(default=8000)
 
+    # CORS
+    CORS_ALLOW_ORIGINS: list[str] = Field(default_factory=lambda: ["*"])
+    CORS_ALLOW_CREDENTIALS: bool = Field(default=True)
+
     # 数据库（PostgreSQL, asyncpg 驱动）
     DATABASE_URL: str = Field(default="postgres://postgres:postgres@localhost:5432/fastapi_admin")
 
@@ -53,9 +57,17 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_SECONDS: int = Field(default=60 * 30)  # 30分钟
     REFRESH_TOKEN_EXPIRE_SECONDS: int = Field(default=60 * 60 * 24 * 7)  # 7天
 
+    # JWT 轮换（kid 支持）
+    JWT_ACTIVE_KID: str | None = Field(default=None)
+    JWT_KEYS: dict[str, str] = Field(default_factory=dict)
+
     # 登录安全策略
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5)
     LOGIN_LOCK_MINUTES: int = Field(default=3)  # 锁定3分钟，避免暴力破解
+
+    # 速率限制（每分钟）
+    RATE_LIMIT_PER_MINUTE: int = Field(default=80)
+    RATE_LIMIT_LOGIN_PER_MINUTE: int = Field(default=5)
 
     # 超级管理员配置
     SUPERUSER_USERNAME: str = Field(default="admin")

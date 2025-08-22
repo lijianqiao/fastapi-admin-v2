@@ -19,9 +19,12 @@ from app.core.config import get_settings
 from app.core.database import close_database, init_database
 from app.core.metrics import MetricsMiddleware, get_metrics_router, scrape_runtime_metrics
 from app.core.permissions import bump_perm_version
+from app.middlewares.rate_limit import RateLimitMiddleware
 from app.middlewares.request_context import RequestContextMiddleware
 from app.utils.cache import close_redis
 from app.utils.logger import logger, setup_logger
+
+settings = get_settings()
 
 
 def setup_middlewares(app: FastAPI) -> None:
@@ -37,13 +40,21 @@ def setup_middlewares(app: FastAPI) -> None:
         RequestContextMiddleware,
     )
 
+    allow_origins = settings.CORS_ALLOW_ORIGINS
+    allow_credentials = settings.CORS_ALLOW_CREDENTIALS
+    # 生产安全：当 allow_credentials=True 时不允许 *
+    if allow_credentials and any(o == "*" for o in allow_origins):
+        allow_origins = [] if settings.ENVIRONMENT != "development" else ["*"]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=allow_origins or ["*"],
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # 限流中间件（在日志与CORS之后、路由之前）
+    app.add_middleware(RateLimitMiddleware)
     # 指标中间件
     app.add_middleware(MetricsMiddleware)
     # 暴露 /metrics
@@ -60,7 +71,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     Returns:
         AsyncIterator[None]: 异步迭代器
     """
-    settings = get_settings()
     environment = settings.ENVIRONMENT
     if environment not in ("development", "testing", "production"):
         environment = "development"

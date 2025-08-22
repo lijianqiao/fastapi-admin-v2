@@ -19,6 +19,8 @@ from app.core.config import get_settings
 from app.core.exceptions import unauthorized
 from app.schemas.auth import TokenPair
 
+settings = get_settings()
+
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -56,13 +58,18 @@ def _create_token(subject: str, expires_delta: int, extra_claims: dict[str, Any]
     Returns:
         str: 令牌
     """
-    settings = get_settings()
     now = dt.datetime.now(dt.UTC)
     exp = now + dt.timedelta(seconds=expires_delta)
     payload: dict[str, Any] = {"sub": subject, "iat": now, "exp": exp, "ver": 1}
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    # kid 支持：若配置了 ACTIVE_KID 且在 JWT_KEYS 中，优先使用该 secret 并写入 kid
+    key = settings.JWT_SECRET_KEY
+    headers: dict[str, Any] | None = None
+    if settings.JWT_ACTIVE_KID and settings.JWT_KEYS.get(settings.JWT_ACTIVE_KID):
+        key = settings.JWT_KEYS[settings.JWT_ACTIVE_KID]
+        headers = {"kid": settings.JWT_ACTIVE_KID}
+    return jwt.encode(payload, key, algorithm=settings.JWT_ALGORITHM, headers=headers)
 
 
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
@@ -116,8 +123,18 @@ def decode_token(token: str) -> dict[str, Any]:
     Returns:
         dict[str, Any]: 解码后的令牌
     """
+    # 支持 kid 轮换：带 kid 则按 kid 解；否则按默认 SECRET
     try:
-        return jwt.decode(token, get_settings().JWT_SECRET_KEY, algorithms=[get_settings().JWT_ALGORITHM])
+        # jose 不暴露 decode headers API，采用两段式：先不校验取 header（轻量）
+        # 这里最小实现：尝试使用 ACTIVE_KID 对应 key 校验一次，失败再退回默认 SECRET
+        if settings.JWT_ACTIVE_KID and settings.JWT_KEYS.get(settings.JWT_ACTIVE_KID):
+            try:
+                return jwt.decode(
+                    token, settings.JWT_KEYS[settings.JWT_ACTIVE_KID], algorithms=[settings.JWT_ALGORITHM]
+                )
+            except Exception:
+                pass
+        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except ExpiredSignatureError as exc:
         raise unauthorized("令牌已过期") from exc
     except JWTError as exc:

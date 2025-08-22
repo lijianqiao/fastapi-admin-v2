@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.dependencies import get_auth_service, get_current_user_id
+from app.middlewares.rate_limit import rate_limit_login
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
 from app.schemas.response import Response
 from app.services import AuthService
@@ -19,7 +20,7 @@ from app.services import AuthService
 router = APIRouter()
 
 
-@router.post("/login", response_model=TokenOut, summary="登录获取令牌")
+@router.post("/login", response_model=TokenOut, summary="登录获取令牌", dependencies=[Depends(rate_limit_login)])
 async def login(
     form: OAuth2PasswordRequestForm = Depends(),
     svc: AuthService = Depends(get_auth_service),
