@@ -19,6 +19,14 @@ from app.utils.cache_manager import get_cache_manager
 
 
 def _user_ver_key(user_id: int) -> str:
+    """用户令牌版本缓存键
+
+    Args:
+        user_id (int): 用户ID。
+
+    Returns:
+        str: 缓存键。
+    """
     return f"auth:ver:u:{user_id}"
 
 
