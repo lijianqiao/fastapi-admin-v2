@@ -71,6 +71,9 @@ class UserService(BaseService):
             "phone": data.phone,
             "email": data.email,
             "password_hash": hash_password(data.password),
+            "nickname": data.nickname,
+            "bio": data.bio,
+            "avatar_url": data.avatar_url,
         }
         try:
             user = await self.dao.create(to_create)
@@ -102,6 +105,12 @@ class UserService(BaseService):
             update_map["phone"] = data.phone
         if data.email is not None:
             update_map["email"] = data.email
+        if data.nickname is not None:
+            update_map["nickname"] = data.nickname
+        if data.bio is not None:
+            update_map["bio"] = data.bio
+        if data.avatar_url is not None:
+            update_map["avatar_url"] = data.avatar_url
         if data.password is not None:
             update_map["password_hash"] = hash_password(data.password)
         if data.is_active is not None:

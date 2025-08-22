@@ -118,6 +118,7 @@ async def seed_builtin() -> None:
             "phone": settings.SUPERUSER_PHONE,
             "email": settings.SUPERUSER_EMAIL,
             "password_hash": hash_password(settings.SUPERUSER_PASSWORD),
+            "nickname": settings.SUPERUSER_NICKNAME,
         },
     )
     super_role_id = role_map.get("super_admin")

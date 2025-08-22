@@ -21,8 +21,11 @@ class UserCreate(BaseModel):
 
     username: str = Field(min_length=3, max_length=64)
     phone: str = Field(min_length=6, max_length=20, pattern=r"^\d{6,20}$")
-    email: EmailStr | None = None
+    email: EmailStr
     password: str = Field(min_length=6, max_length=64)
+    nickname: str = Field(max_length=64)
+    bio: str | None = Field(default=None, max_length=1000)
+    avatar_url: str | None = Field(default=None, max_length=255)
 
 
 class UserUpdate(BaseModel):
@@ -33,6 +36,9 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password: str | None = Field(default=None, min_length=6, max_length=64)
     is_active: bool | None = None
+    nickname: str | None = Field(default=None, max_length=64)
+    bio: str | None = Field(default=None, max_length=1000)
+    avatar_url: str | None = Field(default=None, max_length=255)
 
 
 class UserQuery(BaseModel):
@@ -49,7 +55,10 @@ class UserOut(BaseModel):
     version: int
     username: str
     phone: str
-    email: EmailStr | None = None
+    email: EmailStr = None
+    nickname: str = None
+    bio: str | None = None
+    avatar_url: str | None = None
     is_active: bool
     failed_attempts: int
     locked_until: datetime | None = None

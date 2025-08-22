@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     SUPERUSER_PASSWORD: str = Field(default="admin@123")
     SUPERUSER_EMAIL: str = Field(default="admin@example.com")
     SUPERUSER_PHONE: str = Field(default="13800000000")
+    SUPERUSER_NICKNAME: str = Field(default="超级管理员")
 
 
 @lru_cache(maxsize=1)

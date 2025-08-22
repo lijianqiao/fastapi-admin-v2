@@ -34,7 +34,10 @@ class User(BaseModel):
 
     username = fields.CharField(max_length=64, db_index=True, description="用户名（唯一）")
     phone = fields.CharField(max_length=20, db_index=True, description="手机号（唯一，必填）")
-    email = fields.CharField(max_length=128, null=True, db_index=True, description="邮箱（可选，唯一）")
+    email = fields.CharField(max_length=128, db_index=True, description="邮箱（唯一，必填）")
+    nickname = fields.CharField(max_length=64, db_index=True, description="昵称（唯一，必填）")
+    bio = fields.TextField(null=True, description="简介（可选）")
+    avatar_url = fields.CharField(max_length=255, null=True, description="头像URL（可选）")
     password_hash = fields.CharField(max_length=255, description="密码哈希")
     failed_attempts = fields.IntField(default=0, description="连续登录失败次数")
     locked_until = fields.DatetimeField(null=True, description="账户锁定截止时间")
@@ -46,11 +49,13 @@ class User(BaseModel):
             ("username", "is_deleted"),
             ("phone", "is_deleted"),
             ("email", "is_deleted"),
+            ("nickname", "is_deleted"),
         )
         indexes = (
             ("username",),
             ("phone",),
             ("email",),
+            ("nickname",),
             ("id", "version"),
             ("is_active", "is_deleted"),
             ("created_at",),
