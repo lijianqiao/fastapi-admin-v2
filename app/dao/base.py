@@ -145,7 +145,9 @@ class BaseDAO[ModelType: Model]:
             int: 受影响行数。
         """
         now = datetime.now(tz=UTC)
-        updated = await self.model.filter(id=entity_id, is_deleted=False).update(is_deleted=True, updated_at=now)
+        updated = await self.model.filter(id=entity_id, is_deleted=False).update(
+            is_deleted=True, deleted_at=now, updated_at=now
+        )
         return updated
 
     async def restore(self, entity_id: int | str) -> int:
@@ -155,7 +157,9 @@ class BaseDAO[ModelType: Model]:
             int: 受影响行数。
         """
         now = datetime.now(tz=UTC)
-        updated = await self.model.filter(id=entity_id, is_deleted=True).update(is_deleted=False, updated_at=now)
+        updated = await self.model.filter(id=entity_id, is_deleted=True).update(
+            is_deleted=False, deleted_at=now, updated_at=now
+        )
         return updated
 
     async def hard_delete(self, entity_id: int | str) -> int:
