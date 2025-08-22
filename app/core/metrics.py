@@ -8,10 +8,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, Response
+from fastapi import APIRouter, FastAPI, Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 from app.core.database import Tortoise
@@ -99,7 +100,22 @@ def get_metrics_router() -> APIRouter:
     router = APIRouter(tags=["系统"])
 
     @router.get("/metrics")
-    async def metrics() -> Response:
+    async def metrics(request: Request) -> Response:
+        """获取指标数据
+        Args:
+            request (Request): 请求对象
+
+        Returns:
+            Response: 响应对象
+        """
+        # 简易白名单控制（生产建议用网关限制）。
+        from app.core.config import get_settings as _gs
+
+        ips = _gs().METRICS_ALLOW_IPS
+        if ips:
+            client_ip = request.client.host if request.client else "-"
+            if client_ip not in ips:
+                return Response(status_code=403)
         data = generate_latest()  # 默认全局注册表
         return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
@@ -126,7 +142,31 @@ async def scrape_runtime_metrics() -> None:
         pass
 
 
-async def redis_op_with_metric(op_name: str, coro):  # type: ignore[no-untyped-def]
+async def schedule_scrape_metrics(app: FastAPI) -> None:
+    """周期性抓取运行态指标（后台任务）。
+
+    仅在应用运行时循环执行，关闭时自然结束。
+    Args:
+        app (FastAPI): 应用对象
+
+    Returns:
+        None: 无返回
+    """
+    from app.core.config import get_settings as _gs
+
+    interval = max(5, int(_gs().METRICS_SCRAPE_INTERVAL_SECONDS))
+    while True:
+        try:
+            await scrape_runtime_metrics()
+        except Exception:
+            pass
+        try:
+            await asyncio.sleep(interval)
+        except Exception:
+            break
+
+
+async def redis_op_with_metric(op_name: str, coro):
     """包装 Redis 操作，失败时累加错误计数。
 
     Args:
@@ -152,5 +192,6 @@ __all__ = [
     "DB_POOL_USAGE",
     "REDIS_ERRORS",
     "scrape_runtime_metrics",
+    "schedule_scrape_metrics",
     "redis_op_with_metric",
 ]

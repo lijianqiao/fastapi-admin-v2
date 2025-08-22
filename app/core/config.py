@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     CORS_ALLOW_ORIGINS: list[str] = Field(default_factory=lambda: ["*"])
     CORS_ALLOW_CREDENTIALS: bool = Field(default=True)
 
+    # 指标访问白名单与抓取间隔
+    METRICS_ALLOW_IPS: list[str] = Field(default_factory=list)
+    METRICS_SCRAPE_INTERVAL_SECONDS: int = Field(default=30)
+
     # 数据库（PostgreSQL, asyncpg 驱动）
     DATABASE_URL: str = Field(default="postgres://postgres:postgres@localhost:5432/fastapi_admin")
 

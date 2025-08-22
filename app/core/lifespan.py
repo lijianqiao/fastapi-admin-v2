@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.database import close_database, init_database
-from app.core.metrics import MetricsMiddleware, get_metrics_router, scrape_runtime_metrics
+from app.core.metrics import MetricsMiddleware, get_metrics_router, schedule_scrape_metrics, scrape_runtime_metrics
 from app.core.permissions import bump_perm_version
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.middlewares.request_context import RequestContextMiddleware
@@ -79,6 +79,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # 启动时抓一次运行期指标
     try:
         await scrape_runtime_metrics()
+    except Exception:
+        pass
+    # 后台周期抓取运行期指标
+    try:
+        import asyncio
+
+        app.add_event_handler("startup", lambda: None)  # 保持兼容
+        asyncio.create_task(schedule_scrape_metrics(app))
     except Exception:
         pass
     logger.info("应用启动完成")
