@@ -85,8 +85,8 @@ class UserOut(BaseModel):
     version: int
     username: str
     phone: str
-    email: EmailStr = None
-    nickname: str = None
+    email: EmailStr
+    nickname: str
     bio: str | None = None
     avatar_url: str | None = None
     is_active: bool

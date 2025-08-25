@@ -28,6 +28,7 @@ class PermissionService(BaseService):
 
     def __init__(self, perm_dao: PermissionDAO | None = None) -> None:
         super().__init__(perm_dao or PermissionDAO())
+        self.dao: PermissionDAO = perm_dao or PermissionDAO()
 
     @log_operation(action=Perm.PERMISSION_CREATE)
     async def create_permission(self, data: PermissionCreate, *, actor_id: int | None = None) -> PermissionOut:

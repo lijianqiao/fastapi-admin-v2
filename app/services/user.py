@@ -41,6 +41,7 @@ class UserService(BaseService):
 
     def __init__(self, user_dao: UserDAO | None = None, user_role_dao: UserRoleDAO | None = None) -> None:
         super().__init__(user_dao or UserDAO())
+        self.dao: UserDAO = user_dao or UserDAO()
         self.user_role_dao = user_role_dao or UserRoleDAO()
 
     @log_operation(action=Perm.USER_CREATE)

@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -46,11 +46,11 @@ def setup_logger(environment: Literal["development", "testing", "production"] = 
     logger.remove()
 
     # 为所有日志记录补齐 trace_id，避免 KeyError
-    def _patch(record: dict) -> None:  # type: ignore[override]
+    def _patch(record: Any) -> None:
         """为日志记录补齐 trace_id 字段，避免格式化 KeyError。
 
         Args:
-            record (dict): 日志记录。
+            record: 日志记录对象。
 
         Returns:
             None: 无返回。

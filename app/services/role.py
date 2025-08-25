@@ -38,6 +38,7 @@ class RoleService(BaseService):
         perm_dao: PermissionDAO | None = None,
     ) -> None:
         super().__init__(role_dao or RoleDAO())
+        self.dao: RoleDAO = role_dao or RoleDAO()
         self.role_perm_dao = role_perm_dao or RolePermissionDAO()
         self.perm_dao = perm_dao or PermissionDAO()
 
@@ -205,7 +206,7 @@ class RoleService(BaseService):
             list[PermissionOut]: 权限列表。
         """
         rels = await self.role_perm_dao.list_permissions_of_role(role_id)
-        perm_ids = [r.permission_id for r in rels]
+        perm_ids = [r.permission.id for r in rels]
         perms = []
         if perm_ids:
             perms = await self.perm_dao.get_many_by_ids(perm_ids)

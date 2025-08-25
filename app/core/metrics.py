@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any
 
 from fastapi import APIRouter, FastAPI, Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response as StarletteResponse
 
 from app.core.database import Tortoise
 
@@ -61,39 +62,42 @@ REDIS_ERRORS = Counter(
 )
 
 
-class MetricsMiddleware:
+class MetricsMiddleware(BaseHTTPMiddleware):
     """监控中间件：统计请求数量、进行中请求、时延直方图。
 
     使用固定 path 标签（不展开路径参数），仅取原始 path，避免高基数。
     """
 
-    def __init__(self, app: FastAPI) -> None:
-        self.app = app
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> StarletteResponse:
+        """处理请求并收集指标
 
-    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> Any:  # type: ignore[override]
-        if scope.get("type") != "http":
-            return await self.app(scope, receive, send)
+        Args:
+            request (Request): 请求对象
+            call_next (RequestResponseEndpoint): 下一个中间件
 
-        method = scope.get("method", "-")
-        path = scope.get("path", "-")
+        Returns:
+            StarletteResponse: 响应对象
+        """
+        method = request.method
+        path = request.url.path
         start = time.perf_counter()
+        status_code = 500  # 默认状态码
         REQUEST_IN_PROGRESS.labels(method, path).inc()
 
-        status_code_holder: dict[str, int] = {"code": 500}
-
-        async def send_wrapper(message: dict[str, Any]) -> Any:
-            if message.get("type") == "http.response.start":
-                status_code_holder["code"] = int(message.get("status", 500))
-            return await send(message)
-
         try:
-            return await self.app(scope, receive, send_wrapper)
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception:
+            status_code = 500
+            raise
         finally:
+            # 无论成功还是异常都记录指标
             elapsed = time.perf_counter() - start
             REQUEST_IN_PROGRESS.labels(method, path).dec()
             REQUEST_LATENCY.labels(method, path).observe(elapsed)
-            REQUEST_COUNTER.labels(method, path, str(status_code_holder["code"]))
-            REQUEST_COUNTER.labels(method, path, str(status_code_holder["code"])).inc()
+            REQUEST_COUNTER.labels(method, path, str(status_code)).inc()
+
+        return response
 
 
 def get_metrics_router() -> APIRouter:

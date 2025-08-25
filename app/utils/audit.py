@@ -42,7 +42,14 @@ def log_operation(
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             started_at = time.monotonic()
-            actor_id = int(kwargs.get("actor_id") or 0)
+            actor_id_value = kwargs.get("actor_id")
+            if actor_id_value is None:
+                actor_id = 0
+            else:
+                try:
+                    actor_id = int(actor_id_value)  # type: ignore[arg-type]
+                except (ValueError, TypeError):
+                    actor_id = 0
             target_id = target_getter(args, kwargs) if target_getter else None
             dao = AuditLogDAO()
             error_text: str | None = None

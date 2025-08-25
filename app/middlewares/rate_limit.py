@@ -83,7 +83,12 @@ async def rate_limit_login(request: Request) -> None:
     # 尝试从表单读取用户名
     try:
         form = await request.form()
-        username = (form.get("username") or "-").strip()
+        username_field = form.get("username")
+        # 确保只对字符串类型调用strip()方法，避免UploadFile等类型的错误
+        if isinstance(username_field, str):
+            username = username_field.strip() or "-"
+        else:
+            username = "-"
     except Exception:
         username = "-"
     now = int(time.time())

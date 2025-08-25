@@ -167,7 +167,8 @@ class CacheManager:
         """
         if not members:
             return 0
-        return int(await self.client.sadd(key, *members))
+        result = await self.client.sadd(key, *members)  # type: ignore[misc]
+        return int(result)
 
     async def smembers(self, key: str) -> set[str]:
         """读取集合的所有成员（字符串集合）。
@@ -178,7 +179,7 @@ class CacheManager:
         Returns:
             set[str]: 集合成员。
         """
-        vals = await self.client.smembers(key)
+        vals = await self.client.smembers(key)  # type: ignore[misc]
         return {v if isinstance(v, str) else v.decode("utf-8") for v in vals}
 
     # 版本号工具

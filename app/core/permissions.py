@@ -68,12 +68,12 @@ async def _load_user_permissions_from_db(user_id: int) -> set[str]:
     role_perm_dao = RolePermissionDAO()
     perm_dao = PermissionDAO()
     user_roles = await user_role_dao.list_roles_of_user(user_id)
-    role_ids = [ur.role_id for ur in user_roles]
+    role_ids = [ur.role.id for ur in user_roles]
     if not role_ids:
         return set()
     # 角色-权限关系
     rels = await role_perm_dao.list_by_role_ids(role_ids)
-    perm_ids = [rp.permission_id for rp in rels]
+    perm_ids = [rp.permission.id for rp in rels]
     if not perm_ids:
         return set()
     # 权限code集合
