@@ -192,6 +192,18 @@ class RoleService(BaseService):
         Returns:
             None: 无返回。
         """
+        # 验证角色是否存在
+        role = await self.dao.alive().filter(id=data.role_id).first()
+        if not role:
+            raise not_found("角色不存在")
+
+        # 验证权限是否存在
+        if data.target_ids:
+            existing_perms = await self.perm_dao.alive().filter(id__in=data.target_ids).values_list("id", flat=True)
+            missing_perm_ids = [pid for pid in data.target_ids if pid not in existing_perms]
+            if missing_perm_ids:
+                raise not_found(f"权限不存在: {missing_perm_ids}")
+
         stats = await self.role_perm_dao.bind_permissions(data.role_id, data.target_ids)
         await bump_perm_version()
         return BindStats(**stats)

@@ -250,6 +250,23 @@ class UserService(BaseService):
         Returns:
             None: 无返回。
         """
+        # 验证用户是否存在
+        if data.user_ids:
+            existing_users = await self.dao.alive().filter(id__in=data.user_ids).values_list("id", flat=True)
+            missing_user_ids = [uid for uid in data.user_ids if uid not in existing_users]
+            if missing_user_ids:
+                raise not_found(f"用户不存在: {missing_user_ids}")
+
+        # 验证角色是否存在
+        if data.role_ids:
+            from app.dao.role import RoleDAO
+
+            role_dao = RoleDAO()
+            existing_roles = await role_dao.alive().filter(id__in=data.role_ids).values_list("id", flat=True)
+            missing_role_ids = [rid for rid in data.role_ids if rid not in existing_roles]
+            if missing_role_ids:
+                raise not_found(f"角色不存在: {missing_role_ids}")
+
         stats = await self.user_role_dao.bind_roles_to_users(data.user_ids, data.role_ids)
         await bump_perm_version()
         return BindStats(**stats)

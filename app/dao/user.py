@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from tortoise.expressions import Q
+
 from app.dao.base import BaseDAO
 from app.models import User
 
@@ -67,7 +69,7 @@ class UserDAO(BaseDAO[User]):
         Returns:
             tuple[list[User], int]: (items, total)。
         """
-        q = self.alive().filter(username__icontains=keyword) | self.alive().filter(phone__icontains=keyword)
+        q = self.alive().filter(Q(username__icontains=keyword) | Q(phone__icontains=keyword))
         total = await q.count()
         items = await q.order_by("-id").offset((page - 1) * page_size).limit(page_size)
         return items, total
