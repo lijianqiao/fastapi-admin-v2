@@ -38,10 +38,8 @@ class UserRoleDAO(BaseDAO[UserRole]):
         # 查已有（包含软删），避免重复写入；软删则恢复
         existing = await self.model.filter(user_id=user_id, role_id__in=list(role_ids)).all()
         restore_ids: list[int] = [int(x.id) for x in existing if getattr(x, "is_deleted", False)]
-        existed_active: set[int] = {int(x.role.id) for x in existing if not getattr(x, "is_deleted", False)}
-        to_create = [
-            rid for rid in role_ids if rid not in existed_active and all(int(x.role.id) != rid for x in existing)
-        ]
+        existed_active: set[int] = {x.role_id for x in existing if not getattr(x, "is_deleted", False)}  # type: ignore[attr-defined]
+        to_create = [rid for rid in role_ids if rid not in existed_active and all(x.role_id != rid for x in existing)]  # type: ignore[attr-defined]
         now = datetime.now(tz=UTC)
         added = 0
         restored = 0
@@ -87,7 +85,7 @@ class UserRoleDAO(BaseDAO[UserRole]):
         existing = await self.model.filter(user_id__in=list(user_ids), role_id__in=list(role_ids)).all()
         exist_map: dict[tuple[int, int], tuple[int, bool]] = {}
         for x in existing:
-            exist_map[(int(x.user.id), int(x.role.id))] = (int(x.id), bool(getattr(x, "is_deleted", False)))
+            exist_map[(x.user_id, x.role_id)] = (int(x.id), bool(getattr(x, "is_deleted", False)))  # type: ignore[attr-defined]
         to_restore_ids: list[int] = []
         to_create_rows: list[dict[str, int]] = []
         for uid, rid in targets:

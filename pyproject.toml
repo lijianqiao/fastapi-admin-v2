@@ -49,5 +49,10 @@ src_folder = "./."
 
 [dependency-groups]
 dev = [
+    "coverage>=7.10.5",
+    "httpx>=0.28.1",
     "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-html>=4.1.1",
+    "pytest-xdist>=3.8.0",
 ]

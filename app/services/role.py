@@ -206,7 +206,7 @@ class RoleService(BaseService):
             list[PermissionOut]: 权限列表。
         """
         rels = await self.role_perm_dao.list_permissions_of_role(role_id)
-        perm_ids = [r.permission.id for r in rels]
+        perm_ids = [r.permission_id for r in rels]  # type: ignore[attr-defined]
         perms = []
         if perm_ids:
             perms = await self.perm_dao.get_many_by_ids(perm_ids)
