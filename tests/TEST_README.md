@@ -16,7 +16,8 @@ tests/
 ├── test_permissions.py        # 权限管理API测试
 ├── test_logs.py               # 审计日志API测试
 ├── test_system.py             # 系统相关API测试
-└── test_edge_cases.py         # 边界情况和错误处理测试
+├── test_edge_cases.py         # 边界情况和错误处理测试
+└── test_regressions.py        # 回归用例：权限缓存空标记与软删恢复一致性
 ```
 
 ## 运行测试
@@ -42,6 +43,7 @@ uv run run_tests.py fast
 
 # 运行特定测试文件
 uv run run_tests.py tests/test_auth.py
+uv run run_tests.py tests/test_regressions.py
 
 # 运行特定测试类
 uv run run_tests.py tests/test_users.py::TestUsers
@@ -116,6 +118,17 @@ uv run run_tests.py tests/test_auth.py::TestAuth::test_login_success
 - ✅ 错误处理
 - ✅ 并发控制
 - ✅ 安全测试（SQL注入、XSS等）
+
+### 回归测试 (test_regressions.py)
+- ✅ 权限缓存“空标记”不产生类型冲突：
+   - 管理员创建无权限用户 -> 该用户访问需要 user:list 的接口应返回 403；
+   - 管理员创建角色并绑定 user:list 权限，再将角色绑定给该用户；
+   - 绑定操作会触发权限版本提升（失效旧缓存），用户再次访问应返回 200。
+   - 用例通过 HTTP 路径触发权限校验，避免异步事件循环与 Redis 客户端跨循环问题。
+- ✅ 软删/恢复一致性：
+   - 软删应写入 deleted_at；
+   - 恢复应将 deleted_at 置为 None；
+   - 单条与批量操作语义保持一致。
 
 ## 测试环境要求
 

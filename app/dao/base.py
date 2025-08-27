@@ -158,7 +158,7 @@ class BaseDAO[ModelType: Model]:
         """
         now = datetime.now(tz=UTC)
         updated = await self.model.filter(id=entity_id, is_deleted=True).update(
-            is_deleted=False, deleted_at=now, updated_at=now
+            is_deleted=False, deleted_at=None, updated_at=now
         )
         return updated
 
@@ -207,7 +207,9 @@ class BaseDAO[ModelType: Model]:
             int: 受影响行数。
         """
         now = datetime.now(tz=UTC)
-        return await self.model.filter(id__in=list(ids), is_deleted=False).update(is_deleted=True, updated_at=now)
+        return await self.model.filter(id__in=list(ids), is_deleted=False).update(
+            is_deleted=True, deleted_at=now, updated_at=now
+        )
 
     async def bulk_restore(self, ids: Sequence[int | str]) -> int:
         """批量恢复软删记录。
@@ -216,7 +218,9 @@ class BaseDAO[ModelType: Model]:
             int: 受影响行数。
         """
         now = datetime.now(tz=UTC)
-        return await self.model.filter(id__in=list(ids), is_deleted=True).update(is_deleted=False, updated_at=now)
+        return await self.model.filter(id__in=list(ids), is_deleted=True).update(
+            is_deleted=False, deleted_at=None, updated_at=now
+        )
 
     async def bulk_upsert(self, rows: Iterable[dict[str, Any]]) -> int:
         """批量 upsert（有 `id+version` 则乐观锁更新，否则创建）。

@@ -94,12 +94,25 @@ async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
     cm = get_cache_manager()
     version = await _get_perm_version(cm)
     key = _cache_key(user_id, version)
+    empty_key = f"{key}:empty"
     # 优先缓存
+    user_perm_set: set[str] | None = None
+    # 命中集合缓存
     if await cm.exists(key):
-        user_perm_set = await cm.smembers(key)
-        # 空权限标记：当集合为空且存在同名字符串键（短TTL），直接视为无权限
-        if not user_perm_set:
-            return False
+        try:
+            user_perm_set = await cm.smembers(key)
+            if not user_perm_set:
+                return False
+        except Exception:
+            # 历史版本可能写入为字符串，导致类型冲突：清理并视为未命中
+            try:
+                await cm.delete(key)
+            except Exception:
+                pass
+            user_perm_set = set()
+    # 命中空标记
+    elif await cm.exists(empty_key):
+        return False
     else:
         # 回源
         user_perm_set = await _load_user_permissions_from_db(user_id)
@@ -107,11 +120,12 @@ async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
             await cm.sadd(key, *list(user_perm_set))
             await cm.expire(key, 1800)
         else:
-            # 空权限标记：写一个短TTL字符串键，避免频繁回源
-            await cm.set(key, "__empty__", ttl=60)
+            # 空权限标记：单独键，避免与集合键类型冲突
+            await cm.set(empty_key, "1", ttl=60)
+            user_perm_set = set()
     # 检查
     req_set = set(required)
-    return req_set.issubset(user_perm_set)
+    return req_set.issubset(user_perm_set or set())
 
 
 async def invalidate_user_permissions(user_id: int) -> None:
@@ -126,7 +140,8 @@ async def invalidate_user_permissions(user_id: int) -> None:
     cm = get_cache_manager()
     version = await _get_perm_version(cm)
     key = _cache_key(user_id, version)
-    await cm.delete(key)
+    empty_key = f"{key}:empty"
+    await cm.delete(key, empty_key)
 
 
 __all__ = ["user_has_permissions", "bump_perm_version", "invalidate_user_permissions"]
