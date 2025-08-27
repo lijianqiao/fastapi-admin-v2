@@ -11,11 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends, Query
 
 from app.core.constants import Permission as Perm
-from app.core.dependencies import (
-    get_current_user_id,
-    get_user_service,
-    has_permission,
-)
+from app.core.dependencies import default_page_size, get_current_user_id, get_user_service, has_permission
 from app.schemas.common import BindStats
 from app.schemas.response import Page, Response
 from app.schemas.user import (
@@ -166,7 +162,7 @@ async def get_user(
 async def list_users(
     keyword: str | None = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Depends(default_page_size),
     svc: UserService = Depends(get_user_service),
 ) -> Response[Page[UserOut]]:
     """分页查询用户列表。
@@ -246,7 +242,7 @@ async def list_all_users(
     include_deleted: bool = Query(True),
     include_disabled: bool = Query(True),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Depends(default_page_size),
     svc: UserService = Depends(get_user_service),
 ) -> Response[Page[UserOut]]:
     """获取所有用户列表（可包含软删/禁用）。

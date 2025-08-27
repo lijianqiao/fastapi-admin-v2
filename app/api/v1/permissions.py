@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 
 from app.core.constants import Permission as Perm
-from app.core.dependencies import get_current_user_id, get_permission_service, has_permission
+from app.core.dependencies import default_page_size, get_current_user_id, get_permission_service, has_permission
 from app.dao.role import RoleDAO
 from app.dao.role_permission import RolePermissionDAO
 from app.schemas.permission import PermissionCreate, PermissionIdsIn, PermissionOut, PermissionUpdate
@@ -85,7 +85,7 @@ async def update_permission(
 async def list_roles_of_permission(
     perm_id: int,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Depends(default_page_size),
     rp_dao: RolePermissionDAO = Depends(),
     role_dao: RoleDAO = Depends(),
 ) -> Response[Page[RoleOut]]:
@@ -145,7 +145,7 @@ async def get_permission(
 )
 async def list_permissions(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Depends(default_page_size),
     svc: PermissionService = Depends(get_permission_service),
 ) -> Response[Page[PermissionOut]]:
     """分页查询权限列表。

@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 
 from app.core.constants import Permission as Perm
-from app.core.dependencies import get_current_user_id, get_role_service, has_permission
+from app.core.dependencies import default_page_size, get_current_user_id, get_role_service, has_permission
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
 from app.schemas.common import BindStats
@@ -83,7 +83,7 @@ async def update_role(
 async def list_users_of_role(
     role_id: int,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Depends(default_page_size),
     ur_dao: UserRoleDAO = Depends(),
     user_dao: UserDAO = Depends(),
 ) -> Response[Page[UserOut]]:
@@ -146,7 +146,7 @@ async def get_role(
 )
 async def list_roles(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Depends(default_page_size),
     svc: RoleService = Depends(get_role_service),
 ) -> Response[Page[RoleOut]]:
     """分页查询角色列表。

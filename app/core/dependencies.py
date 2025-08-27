@@ -252,6 +252,26 @@ def get_system_config_service(
     return SystemConfigService(system_config_dao=system_config_dao)
 
 
+# ---------- Dynamic defaults ----------
+async def default_page_size() -> int:
+    """动态默认分页大小：优先读取 SystemConfig.default_page_size。
+
+    Args:
+        None
+
+    Returns:
+        int: 默认分页大小
+    """
+    try:
+        cfg = await SystemConfigDAO().get_singleton()
+        ps = int(getattr(cfg, "default_page_size", 20) or 20)
+        if ps < 1:
+            return 20
+        return ps
+    except Exception:
+        return 20
+
+
 __all__ = [
     "get_current_user_id",
     "has_permission",

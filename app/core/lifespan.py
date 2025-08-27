@@ -19,6 +19,7 @@ from app.core.config import get_settings
 from app.core.database import close_database, init_database
 from app.core.metrics import MetricsMiddleware, get_metrics_router, schedule_scrape_metrics, scrape_runtime_metrics
 from app.core.permissions import bump_perm_version
+from app.middlewares.force_https import ForceHTTPSMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.middlewares.request_context import RequestContextMiddleware
 from app.utils.cache import close_redis
@@ -39,6 +40,9 @@ def setup_middlewares(app: FastAPI) -> None:
     app.add_middleware(
         RequestContextMiddleware,
     )
+
+    # 强制 HTTPS（如开启）需尽早拦截
+    app.add_middleware(ForceHTTPSMiddleware)
 
     allow_origins = settings.CORS_ALLOW_ORIGINS
     allow_credentials = settings.CORS_ALLOW_CREDENTIALS
