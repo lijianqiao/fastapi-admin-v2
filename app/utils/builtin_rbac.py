@@ -67,6 +67,8 @@ def get_builtin_permissions() -> list[PermissionDef]:
         {"code": Perm.PERMISSION_LIST_ALL, "name": "权限全量列表", "description": "查看所有权限（含禁用/软删）"},
         {"code": Perm.LOG_LIST, "name": "审计日志列表", "description": "查看审计日志"},
         {"code": Perm.LOG_SELF, "name": "我的操作日志", "description": "查看自己的操作记录"},
+        {"code": Perm.SYSTEM_CONFIG_READ, "name": "系统配置读取", "description": "读取系统配置"},
+        {"code": Perm.SYSTEM_CONFIG_UPDATE, "name": "系统配置更新", "description": "更新系统配置"},
     ]
 
 

@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.core.exceptions import forbidden, unauthorized
 from app.core.permissions import invalidate_user_permissions
 from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
+from app.dao.system_config import SystemConfigDAO
 from app.dao.user import UserDAO
 from app.schemas.auth import LoginIn, RefreshIn, TokenOut
 from app.utils.cache_manager import get_cache_manager
@@ -35,6 +36,7 @@ def _user_ver_key(user_id: int) -> str:
 class AuthService:
     def __init__(self, user_dao: UserDAO | None = None) -> None:
         self.user_dao = user_dao or UserDAO()
+        self._syscfg = SystemConfigDAO()
 
     async def login(self, data: LoginIn) -> TokenOut:
         """登录。
@@ -83,6 +85,11 @@ class AuthService:
                 raise unauthorized("用户名或密码错误")
 
             settings = get_settings()
+            cfg = None
+            try:
+                cfg = await self._syscfg.get_singleton()
+            except Exception:
+                cfg = None
             now = datetime.now(tz=UTC)
             # 如果当前仍处于锁定窗口，直接提示
             if user.locked_until:
@@ -94,8 +101,8 @@ class AuthService:
                     raise forbidden("账户已锁定，请稍后再试")
 
             next_failed = (user.failed_attempts or 0) + 1
-            lock_minutes = max(1, settings.LOGIN_LOCK_MINUTES)
-            max_attempts = max(1, settings.LOGIN_MAX_FAILED_ATTEMPTS)
+            lock_minutes = max(1, (getattr(cfg, "login_lock_minutes", 0) or settings.LOGIN_LOCK_MINUTES))
+            max_attempts = max(1, (getattr(cfg, "login_max_failed_attempts", 0) or settings.LOGIN_MAX_FAILED_ATTEMPTS))
             locked_until = None
             if next_failed >= max_attempts:
                 locked_until = now + timedelta(minutes=lock_minutes)
@@ -116,7 +123,16 @@ class AuthService:
         # 读取用户令牌版本（默认 1）
         cm = get_cache_manager()
         ver = await cm.get_version(_user_ver_key(int(user.id)), default=1)
-        access = create_access_token(str(user.id), extra_claims={"ver": ver, "typ": "access"})
+        # 会话超时覆盖（小时）
+        try:
+            cfg = await self._syscfg.get_singleton()
+            session_hours = int(getattr(cfg, "session_timeout_hours", 0) or 0)
+        except Exception:
+            session_hours = 0
+        access_expires = session_hours * 3600 if session_hours > 0 else None
+        access = create_access_token(
+            str(user.id), extra_claims={"ver": ver, "typ": "access"}, expires_seconds=access_expires
+        )
         refresh = create_refresh_token(str(user.id), extra_claims={"ver": ver, "typ": "refresh"})
 
         # 更新最近登录时间并清除锁定/失败计数
@@ -156,7 +172,16 @@ class AuthService:
             logger.warning(f"刷新失败：账号已禁用或已删除 user_id={user_id}")
             raise unauthorized("令牌已失效，请重新登录")
         # 颁发新对
-        access = create_access_token(sub, extra_claims={"ver": current_ver, "typ": "access"})
+        # refresh 时同样应用会话超时策略
+        try:
+            cfg = await self._syscfg.get_singleton()
+            session_hours = int(getattr(cfg, "session_timeout_hours", 0) or 0)
+        except Exception:
+            session_hours = 0
+        access_expires = session_hours * 3600 if session_hours > 0 else None
+        access = create_access_token(
+            sub, extra_claims={"ver": current_ver, "typ": "access"}, expires_seconds=access_expires
+        )
         refresh = create_refresh_token(sub, extra_claims={"ver": current_ver, "typ": "refresh"})
         return TokenOut(access_token=access, refresh_token=refresh)
 

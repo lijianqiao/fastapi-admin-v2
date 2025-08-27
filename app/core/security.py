@@ -72,7 +72,9 @@ def _create_token(subject: str, expires_delta: int, extra_claims: dict[str, Any]
     return jwt.encode(payload, key, algorithm=settings.JWT_ALGORITHM, headers=headers)
 
 
-def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
+def create_access_token(
+    subject: str, extra_claims: dict[str, Any] | None = None, *, expires_seconds: int | None = None
+) -> str:
     """创建访问令牌
 
     Args:
@@ -82,7 +84,12 @@ def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None
     Returns:
         str: 访问令牌
     """
-    return _create_token(subject, get_settings().ACCESS_TOKEN_EXPIRE_SECONDS, extra_claims)
+    seconds = (
+        expires_seconds
+        if isinstance(expires_seconds, int) and expires_seconds > 0
+        else get_settings().ACCESS_TOKEN_EXPIRE_SECONDS
+    )
+    return _create_token(subject, seconds, extra_claims)
 
 
 def create_refresh_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:

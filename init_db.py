@@ -19,6 +19,7 @@ from app.core.database import TORTOISE_ORM
 from app.core.permissions import bump_perm_version
 from app.core.security import hash_password
 from app.models import Permission, Role, RolePermission, User, UserRole
+from app.models.system_config import SystemConfig
 from app.utils.builtin_rbac import get_builtin_permissions, get_builtin_roles, get_role_permission_map
 from app.utils.logger import logger, setup_logger
 
@@ -144,12 +145,46 @@ async def seed_builtin() -> None:
     )
 
 
+async def seed_system_config() -> None:
+    """若数据库尚无 SystemConfig 记录，则根据 .env 进行一次性预填。"""
+    logger.info("检查并预填 SystemConfig（仅当不存在时）...")
+    await Tortoise.init(config=TORTOISE_ORM)
+    try:
+        inst = await SystemConfig.filter(id=1).first()
+        if inst:
+            logger.info("SystemConfig 已存在，跳过 .env 预填。")
+        else:
+            s = get_settings()
+            created = await SystemConfig.create(
+                id=1,
+                project_name=s.APP_NAME,
+                project_description=s.APP_DESCRIPTION,
+                project_url=None,
+                default_page_size=20,
+                password_min_length=8,
+                password_require_uppercase=False,
+                password_require_lowercase=False,
+                password_require_digits=False,
+                password_require_special=False,
+                password_expire_days=0,
+                login_max_failed_attempts=s.LOGIN_MAX_FAILED_ATTEMPTS,
+                login_lock_minutes=s.LOGIN_LOCK_MINUTES,
+                session_timeout_hours=0,
+                force_https=False,
+            )
+            logger.info("已根据 .env 预填 SystemConfig：id=1, name={name}", name=created.project_name)
+    finally:
+        await Tortoise.close_connections()
+
+
 async def main_async(op: Literal["drop", "truncate", "seed"]) -> None:
     if op == "drop":
         await drop_all()
     elif op == "truncate":
         await truncate_all()
     elif op == "seed":
+        # 先预填 SystemConfig，再初始化 RBAC 与超管
+        await seed_system_config()
         await seed_builtin()
 
 
@@ -162,7 +197,9 @@ def main() -> None:
         env = get_settings().ENVIRONMENT
     except Exception:
         env = "development"
-    setup_logger(env)
+    # 约束到合法的 Literal 值
+    env_literal = "development" if env not in ("development", "testing", "production") else env
+    setup_logger(env_literal)  # type: ignore[arg-type]
     logger.info("执行数据库初始化：op={op}", op=args.op)
     try:
         asyncio.run(main_async(args.op))

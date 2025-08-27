@@ -14,6 +14,7 @@ from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
 from app.core.security import hash_password, verify_password
+from app.dao.system_config import SystemConfigDAO
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
 from app.schemas.common import BindStats
@@ -30,6 +31,7 @@ from app.schemas.user import (
 )
 from app.services.base import BaseService
 from app.utils.audit import log_operation
+from app.utils.password_policy import validate_password
 
 
 class UserService(BaseService):
@@ -43,6 +45,20 @@ class UserService(BaseService):
         super().__init__(user_dao or UserDAO())
         self.dao: UserDAO = user_dao or UserDAO()
         self.user_role_dao = user_role_dao or UserRoleDAO()
+        self._syscfg = SystemConfigDAO()
+
+    async def _ensure_password_policy(self, password: str) -> None:
+        cfg = await self._syscfg.get_singleton()
+        ok = validate_password(
+            password,
+            min_length=cfg.password_min_length or 8,
+            require_uppercase=bool(getattr(cfg, "password_require_uppercase", False)),
+            require_lowercase=bool(getattr(cfg, "password_require_lowercase", False)),
+            require_digits=bool(getattr(cfg, "password_require_digits", False)),
+            require_special=bool(getattr(cfg, "password_require_special", False)),
+        )
+        if not ok:
+            raise conflict("密码不符合安全策略")
 
     @log_operation(action=Perm.USER_CREATE)
     async def create_user(self, data: UserCreate, *, actor_id: int | None = None) -> UserOut:
@@ -66,6 +82,8 @@ class UserService(BaseService):
         if data.email is not None and data.email != "":
             if await self.dao.exists(email=data.email):
                 raise conflict("邮箱已存在")
+        # 校验密码策略
+        await self._ensure_password_policy(data.password)
         # 构造持久化数据
         to_create = {
             "username": data.username,
@@ -322,6 +340,7 @@ class UserService(BaseService):
         user = await self.dao.get_by_id(user_id)
         if not user:
             raise not_found("用户不存在")
+        await self._ensure_password_policy(payload.new_password)
         hashed = hash_password(payload.new_password)
         affected = await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
         if affected == 0:
@@ -348,6 +367,7 @@ class UserService(BaseService):
             raise conflict("旧密码不正确")
         if payload.new_password != payload.confirm_password:
             raise conflict("两次密码不一致")
+        await self._ensure_password_policy(payload.new_password)
         hashed = hash_password(payload.new_password)
         await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
 

@@ -11,6 +11,9 @@
 ```
 - 校验失败：`422`，返回统一错误结构
 - 分页参数：`page`(>=1, 默认1)、`page_size`(1~200, 默认20)
+ - 乐观锁：更新操作一般需要提供版本号（version）。
+   - 用户/角色/权限更新：使用查询参数 `?version=当前版本`
+   - 系统配置更新：在 JSON Body 中提供 `"version": 当前版本`
 
 ---
 
@@ -223,6 +226,61 @@
 - 指标（Prometheus）
   - GET `/metrics`
   - 受 `METRICS_ALLOW_IPS` 限制
+
+---
+
+## 系统配置 System Config
+
+- 获取系统配置（system:config:read）
+  - GET `/api/v1/system/config`
+  - 200：
+    ```json
+    {
+      "code": 200,
+      "message": "success",
+      "data": {
+        "version": 3,
+        "project": { "name": "FastAPIAdmin", "description": "...", "url": null },
+        "pagination": { "page_size": 20 },
+        "password_policy": {
+          "min_length": 8,
+          "require_uppercase": false,
+          "require_lowercase": false,
+          "require_digits": false,
+          "require_special": false,
+          "expire_days": 0
+        },
+        "login_security": {
+          "max_failed_attempts": 5,
+          "lock_minutes": 3,
+          "session_timeout_hours": 0,
+          "force_https": false
+        }
+      }
+    }
+    ```
+
+- 更新系统配置（system:config:update，乐观锁）
+  - PUT `/api/v1/system/config`
+  - JSON：必须包含 `version`，并可任选一到多个设置块
+    ```json
+    {
+      "version": 3,
+      "project": { "name": "My Admin" },
+      "pagination": { "page_size": 30 },
+      "password_policy": {
+        "min_length": 10,
+        "require_uppercase": true,
+        "require_lowercase": true,
+        "require_digits": true,
+        "require_special": false,
+        "expire_days": 0
+      },
+      "login_security": { "max_failed_attempts": 5, "lock_minutes": 3, "session_timeout_hours": 6, "force_https": false }
+    }
+    ```
+  - 200：返回最新配置（`version` 自增）
+  - 409：当提交的 `version` 落后于当前版本，返回冲突错误，需先重新 GET 获取最新 `version` 再提交
 
 ---
 

@@ -21,9 +21,11 @@ from app.dao.log import AuditLogDAO
 from app.dao.permission import PermissionDAO
 from app.dao.role import RoleDAO
 from app.dao.role_permission import RolePermissionDAO
+from app.dao.system_config import SystemConfigDAO
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
 from app.services import AuditLogService, AuthService, PermissionService, RoleService, UserService
+from app.services.system_config import SystemConfigService
 from app.utils.logger import logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -150,6 +152,15 @@ def get_audit_log_dao() -> AuditLogDAO:
     return AuditLogDAO()
 
 
+def get_system_config_dao() -> SystemConfigDAO:
+    """获取系统配置DAO
+
+    Returns:
+        SystemConfigDAO: 系统配置DAO
+    """
+    return SystemConfigDAO()
+
+
 # ---------- Service Providers ----------
 def get_user_service(
     user_dao: UserDAO = Depends(get_user_dao),
@@ -225,6 +236,20 @@ def get_auth_service(
         AuthService: 认证服务
     """
     return AuthService(user_dao=user_dao)
+
+
+def get_system_config_service(
+    system_config_dao: SystemConfigDAO = Depends(get_system_config_dao),
+) -> SystemConfigService:
+    """获取系统配置服务
+
+    Args:
+        system_config_dao (SystemConfigDAO): 系统配置DAO
+
+    Returns:
+        SystemConfigService: 系统配置服务
+    """
+    return SystemConfigService(system_config_dao=system_config_dao)
 
 
 __all__ = [

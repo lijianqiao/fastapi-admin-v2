@@ -14,6 +14,7 @@ from .auth import router as auth_router
 from .logs import router as logs_router
 from .permissions import router as permissions_router
 from .roles import router as roles_router
+from .system import router as system_router
 from .users import router as users_router
 
 router = APIRouter()
@@ -22,5 +23,6 @@ router.include_router(users_router, prefix="/users", tags=["用户管理"])
 router.include_router(roles_router, prefix="/roles", tags=["角色管理"])
 router.include_router(permissions_router, prefix="/permissions", tags=["权限管理"])
 router.include_router(logs_router, prefix="/logs", tags=["日志管理"])
+router.include_router(system_router, prefix="/system", tags=["系统配置"])
 
 __all__ = ["router"]

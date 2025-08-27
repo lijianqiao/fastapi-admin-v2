@@ -62,5 +62,9 @@ class Permission(StrEnum):
     ROLE_LIST_ALL = "role:list_all"
     PERMISSION_LIST_ALL = "permission:list_all"
 
+    # 系统配置
+    SYSTEM_CONFIG_READ = "system:config:read"
+    SYSTEM_CONFIG_UPDATE = "system:config:update"
+
 
 __all__ = ["Permission"]
