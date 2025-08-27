@@ -99,15 +99,17 @@ async def list_roles_of_permission(
     Returns:
         Response[Page[RoleOut]]: 统一响应包装的分页角色列表。
     """
-    rels = await rp_dao.list_roles_of_permission(perm_id)
-    rids = [r.role_id for r in rels]
-    items = await role_dao.get_many_by_ids(rids) if rids else []
-    start = (page - 1) * page_size
-    end = start + page_size
-    sel = items[start:end]
+    # SQL 分页：按关系表分页获取 role_id，再批量查询角色详情
+    base_q = rp_dao.alive().filter(permission_id=perm_id)
+    total = await base_q.count()
+    offset = (page - 1) * page_size
+    rid_list = await base_q.order_by("-id").offset(offset).limit(page_size).values_list("role_id", flat=True)
+    roles = await role_dao.get_many_by_ids(rid_list) if rid_list else []
+    role_map = {int(r.id): r for r in roles}
+    ordered = [role_map[rid] for rid in rid_list if rid in role_map]
     return Response[Page[RoleOut]](
         data=Page[RoleOut](
-            items=[RoleOut.model_validate(x) for x in sel], total=len(items), page=page, page_size=page_size
+            items=[RoleOut.model_validate(x) for x in ordered], total=total, page=page, page_size=page_size
         )
     )
 

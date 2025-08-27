@@ -98,16 +98,19 @@ async def list_users_of_role(
     Returns:
         Response[Page[UserOut]]: 统一响应包装的分页用户列表。
     """
-    rels = await ur_dao.list_users_of_role(role_id)
-    uids = [r.user_id for r in rels]
-    items = await user_dao.get_many_by_ids(uids) if uids else []
-    # 简单分页（内存分页，数据量大建议改为 SQL 分页）
-    start = (page - 1) * page_size
-    end = start + page_size
-    sel = items[start:end]
+    # SQL 分页：先统计总数，再按关系表分页取用户ID，再批量查询用户详情
+    base_q = ur_dao.alive().filter(role_id=role_id)
+    total = await base_q.count()
+    offset = (page - 1) * page_size
+    # 先取分页后的 user_id 列表
+    uid_list = await base_q.order_by("-id").offset(offset).limit(page_size).values_list("user_id", flat=True)
+    users = await user_dao.get_many_by_ids(uid_list) if uid_list else []
+    # 保持与 uid_list 相同顺序
+    user_map = {int(u.id): u for u in users}
+    ordered = [user_map[uid] for uid in uid_list if uid in user_map]
     return Response[Page[UserOut]](
         data=Page[UserOut](
-            items=[UserOut.model_validate(x) for x in sel], total=len(items), page=page, page_size=page_size
+            items=[UserOut.model_validate(x) for x in ordered], total=total, page=page, page_size=page_size
         )
     )
 

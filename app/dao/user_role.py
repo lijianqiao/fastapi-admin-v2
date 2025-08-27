@@ -64,8 +64,14 @@ class UserRoleDAO(BaseDAO[UserRole]):
         Returns:
             int: 受影响行数。
         """
+
+        now = datetime.now(tz=UTC)
         async with in_transaction():
-            return await self.alive().filter(user_id=user_id, role_id__in=list(role_ids)).update(is_deleted=True)
+            return (
+                await self.alive()
+                .filter(user_id=user_id, role_id__in=list(role_ids))
+                .update(is_deleted=True, updated_at=now)
+            )
 
     async def bind_roles_to_users(self, user_ids: Sequence[int], role_ids: Sequence[int]) -> dict[str, int]:
         """为多个用户批量绑定多个角色。
@@ -120,11 +126,13 @@ class UserRoleDAO(BaseDAO[UserRole]):
         Returns:
             int: 受影响行数。
         """
+
+        now = datetime.now(tz=UTC)
         async with in_transaction():
             return (
                 await self.alive()
                 .filter(user_id__in=list(user_ids), role_id__in=list(role_ids))
-                .update(is_deleted=True)
+                .update(is_deleted=True, updated_at=now)
             )
 
     async def list_roles_of_user(self, user_id: int) -> list[UserRole]:

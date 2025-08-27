@@ -68,11 +68,13 @@ class RolePermissionDAO(BaseDAO[RolePermission]):
         Returns:
             int: 受影响行数。
         """
+
+        now = datetime.now(tz=UTC)
         async with in_transaction():
             return (
                 await self.alive()
                 .filter(role_id=role_id, permission_id__in=list(permission_ids))
-                .update(is_deleted=True)
+                .update(is_deleted=True, updated_at=now)
             )
 
     async def list_permissions_of_role(self, role_id: int) -> list[RolePermission]:
@@ -165,9 +167,11 @@ class RolePermissionDAO(BaseDAO[RolePermission]):
         Returns:
             int: 受影响行数。
         """
+
+        now = datetime.now(tz=UTC)
         async with in_transaction():
             return (
                 await self.alive()
                 .filter(role_id__in=list(role_ids), permission_id__in=list(permission_ids))
-                .update(is_deleted=True)
+                .update(is_deleted=True, updated_at=now)
             )

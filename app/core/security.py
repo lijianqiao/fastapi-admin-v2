@@ -123,17 +123,45 @@ def decode_token(token: str) -> dict[str, Any]:
     Returns:
         dict[str, Any]: 解码后的令牌
     """
-    # 支持 kid 轮换：带 kid 则按 kid 解；否则按默认 SECRET
+    # 支持 kid 轮换：优先读取 header.kid 对应密钥；如无 kid 或找不到匹配密钥，则使用默认 SECRET。
     try:
-        # jose 不暴露 decode headers API，采用两段式：先不校验取 header（轻量）
-        # 这里最小实现：尝试使用 ACTIVE_KID 对应 key 校验一次，失败再退回默认 SECRET
-        if settings.JWT_ACTIVE_KID and settings.JWT_KEYS.get(settings.JWT_ACTIVE_KID):
+        # jose 的 decode 不提供直接读取 header 的 API，但 decode 会校验签名。
+        # 我们先尝试使用 header.kid 匹配的密钥，若成功则返回；
+        # 若没有 kid 或 kid 未配置，则退回默认密钥；若 kid 存在但无对应密钥，则直接判定无效，避免误用默认密钥解码。
+        kid = None
+        try:
+            # 解析未验证的 header：jose 没有公开 API，这里使用一个轻量技巧：
+            # JWT 的第一段是 header 的 base64url，无需解码库也可解析，但为简洁起见使用 jwt.get_unverified_header。
+            # 注意：get_unverified_header 仅提取 header，不校验签名。
+            from jose.utils import base64url_decode as _b64d  # type: ignore
+
+            # 如果环境不支持 jose.utils（兼容处理），退回到 jose.jwt.get_unverified_header
             try:
-                return jwt.decode(
-                    token, settings.JWT_KEYS[settings.JWT_ACTIVE_KID], algorithms=[settings.JWT_ALGORITHM]
-                )
+                header_str = token.split(".", 1)[0]
+                # 兼容填充
+                rem = len(header_str) % 4
+                if rem:
+                    header_str += "=" * (4 - rem)
+                import json as _json
+
+                kid = _json.loads(_b64d(header_str.encode()).decode()).get("kid")
             except Exception:
-                pass
+                # 退回到 jose 的未验证 header 获取
+                try:
+                    header = jwt.get_unverified_header(token)
+                    kid = header.get("kid") if isinstance(header, dict) else None
+                except Exception:
+                    kid = None
+        except Exception:
+            kid = None
+
+        if kid:
+            key = settings.JWT_KEYS.get(kid)
+            if not key:
+                raise unauthorized("令牌无效")
+            return jwt.decode(token, key, algorithms=[settings.JWT_ALGORITHM])
+
+        # 无 kid：按默认密钥解码
         return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except ExpiredSignatureError as exc:
         raise unauthorized("令牌已过期") from exc

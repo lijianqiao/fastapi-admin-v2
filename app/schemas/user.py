@@ -132,6 +132,12 @@ class UserIdsIn(BaseModel):
 
     ids: list[int] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def _no_dup(self) -> UserIdsIn:
+        if len(set(self.ids)) != len(self.ids):
+            raise unprocessable("用户ID 列表存在重复")
+        return self
+
 
 class UserBindIn(BaseModel):
     """为用户绑定角色入参。"""
@@ -139,9 +145,23 @@ class UserBindIn(BaseModel):
     user_id: int
     role_ids: list[int] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def _no_dup(self) -> UserBindIn:
+        if len(set(self.role_ids)) != len(self.role_ids):
+            raise unprocessable("角色ID 列表存在重复")
+        return self
+
 
 class UsersBindIn(BaseModel):
     """为多个用户批量绑定角色入参。"""
 
     user_ids: list[int] = Field(min_length=1)
     role_ids: list[int] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _no_dup(self) -> UsersBindIn:
+        if len(set(self.user_ids)) != len(self.user_ids):
+            raise unprocessable("用户ID 列表存在重复")
+        if len(set(self.role_ids)) != len(self.role_ids):
+            raise unprocessable("角色ID 列表存在重复")
+        return self
