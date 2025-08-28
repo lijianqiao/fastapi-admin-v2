@@ -273,8 +273,8 @@ async def default_page_size() -> int:
 
 
 async def resolve_page_size(
-    page_size: Annotated[int | None, Query(ge=1, le=200)] = None,
-    default_ps: Annotated[int, Depends(default_page_size)] = 20,
+    page_size: int | None = Query(None, ge=1, le=200),
+    default_ps: int = Depends(default_page_size),
 ) -> int:
     """解析分页大小：优先使用请求参数，未提供则回退到系统默认。
 

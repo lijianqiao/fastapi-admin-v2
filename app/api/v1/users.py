@@ -102,58 +102,6 @@ async def create_user(
     return Response[UserOut](data=user)
 
 
-@router.put(
-    "/{user_id}",
-    dependencies=[Depends(has_permission(Perm.USER_UPDATE))],
-    response_model=Response[None],
-    summary="更新用户（乐观锁）",
-)
-async def update_user(
-    user_id: int,
-    version: int = Query(..., description="乐观锁版本号"),
-    data: UserUpdate = Body(default_factory=UserUpdate),
-    svc: UserService = Depends(get_user_service),
-    actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
-    """更新用户（乐观锁）。
-
-    Args:
-        user_id (int): 用户ID。
-        version (int): 乐观锁版本号。
-        data (UserUpdate | None): 更新入参。
-        svc (UserService): 用户服务依赖。
-        actor_id (int): 当前操作者ID。
-
-    Returns:
-        Response[None]: 统一响应包装的空数据。
-    """
-    await svc.update_user(user_id, version, data, actor_id=actor_id)
-    return Response[None](data=None)
-
-
-@router.get(
-    "/{user_id}",
-    dependencies=[Depends(has_permission(Perm.USER_LIST))],
-    response_model=Response[UserOut],
-    summary="获取用户详情",
-)
-async def get_user(
-    user_id: int,
-    svc: UserService = Depends(get_user_service),
-) -> Response[UserOut]:
-    """获取用户详情。
-
-    Args:
-        user_id (int): 用户ID。
-        svc (UserService): 用户服务依赖。
-
-    Returns:
-        Response[UserOut]: 统一响应包装的用户信息。
-    """
-    user = await svc.get_user(user_id)
-    return Response[UserOut](data=user)
-
-
 @router.get(
     "/",
     dependencies=[Depends(has_permission(Perm.USER_LIST))],
@@ -203,33 +151,6 @@ async def disable_users(
         Response[None]: 统一响应包装的空数据。
     """
     await svc.disable_users(body.ids, actor_id=actor_id)
-    return Response[None](data=None)
-
-
-@router.delete(
-    "/{user_id}",
-    dependencies=[Depends(has_permission(Perm.USER_DELETE))],
-    response_model=Response[None],
-    summary="删除用户（默认软删，hard=True 为硬删）",
-)
-async def delete_user(
-    user_id: int,
-    hard: bool = Query(False),
-    svc: UserService = Depends(get_user_service),
-    actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
-    """删除用户（默认软删，hard=True 为硬删）。
-
-    Args:
-        user_id (int): 用户ID。
-        hard (bool): 是否硬删（默认软删）。
-        svc (UserService): 用户服务依赖。
-        actor_id (int): 当前操作者ID。
-
-    Returns:
-        Response[None]: 统一响应包装的空数据。
-    """
-    await svc.delete_user(user_id, hard=hard, actor_id=actor_id)
     return Response[None](data=None)
 
 
@@ -311,6 +232,85 @@ async def delete_users_hard(
         Response[None]: 统一响应包装的空数据。
     """
     await svc.delete_users(body.ids, hard=True, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.put(
+    "/{user_id}",
+    dependencies=[Depends(has_permission(Perm.USER_UPDATE))],
+    response_model=Response[None],
+    summary="更新用户（乐观锁）",
+)
+async def update_user(
+    user_id: int,
+    version: int = Query(..., description="乐观锁版本号"),
+    data: UserUpdate = Body(default_factory=UserUpdate),
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """更新用户（乐观锁）。
+
+    Args:
+        user_id (int): 用户ID。
+        version (int): 乐观锁版本号。
+        data (UserUpdate | None): 更新入参。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.update_user(user_id, version, data, actor_id=actor_id)
+    return Response[None](data=None)
+
+
+@router.get(
+    "/{user_id}",
+    dependencies=[Depends(has_permission(Perm.USER_LIST))],
+    response_model=Response[UserOut],
+    summary="获取用户详情",
+)
+async def get_user(
+    user_id: int,
+    svc: UserService = Depends(get_user_service),
+) -> Response[UserOut]:
+    """获取用户详情。
+
+    Args:
+        user_id (int): 用户ID。
+        svc (UserService): 用户服务依赖。
+
+    Returns:
+        Response[UserOut]: 统一响应包装的用户信息。
+    """
+    user = await svc.get_user(user_id)
+    return Response[UserOut](data=user)
+
+
+@router.delete(
+    "/{user_id}",
+    dependencies=[Depends(has_permission(Perm.USER_DELETE))],
+    response_model=Response[None],
+    summary="删除用户（默认软删，hard=True 为硬删）",
+)
+async def delete_user(
+    user_id: int,
+    hard: bool = Query(False),
+    svc: UserService = Depends(get_user_service),
+    actor_id: int = Depends(get_current_user_id),
+) -> Response[None]:
+    """删除用户（默认软删，hard=True 为硬删）。
+
+    Args:
+        user_id (int): 用户ID。
+        hard (bool): 是否硬删（默认软删）。
+        svc (UserService): 用户服务依赖。
+        actor_id (int): 当前操作者ID。
+
+    Returns:
+        Response[None]: 统一响应包装的空数据。
+    """
+    await svc.delete_user(user_id, hard=hard, actor_id=actor_id)
     return Response[None](data=None)
 
 
