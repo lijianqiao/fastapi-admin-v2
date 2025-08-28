@@ -14,6 +14,9 @@ from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
 from app.core.security import hash_password, verify_password
+from app.dao.permission import PermissionDAO
+from app.dao.role import RoleDAO
+from app.dao.role_permission import RolePermissionDAO
 from app.dao.system_config import SystemConfigDAO
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
@@ -28,6 +31,7 @@ from app.schemas.user import (
     UserQuery,
     UsersBindIn,
     UserUpdate,
+    UserWithRBACOut,
 )
 from app.services.base import BaseService
 from app.utils.audit import log_operation
@@ -156,10 +160,33 @@ class UserService(BaseService):
         user = await self.dao.get_by_id(user_id)
         if not user:
             raise not_found("用户不存在")
-        # 组装角色与权限（按需查询）
-        await self.user_role_dao.list_roles_of_user(user_id)
-        # 返回基本用户信息，角色/权限可在 API 层扩展字段返回
         return UserOut.model_validate(user)
+
+    async def get_user_with_rbac(self, user_id: int) -> UserWithRBACOut:
+        """查询用户详情并附带角色与权限列表。"""
+        user = await self.dao.get_by_id(user_id)
+        if not user:
+            raise not_found("用户不存在")
+        # 角色
+        rels = await self.user_role_dao.list_roles_of_user(user_id)
+        role_ids = [r.role_id for r in rels]  # type: ignore[attr-defined]
+        role_objs = []
+        if role_ids:
+            role_objs = await (RoleDAO()).get_many_by_ids(role_ids)
+        # 权限
+        perm_codes: list[str] = []
+        if role_ids:
+            rp_dao = RolePermissionDAO()
+            rels2 = await rp_dao.list_by_role_ids(role_ids)
+            perm_ids = [rp.permission_id for rp in rels2]  # type: ignore[attr-defined]
+            if perm_ids:
+                perms = await (PermissionDAO()).list_by_ids(perm_ids)
+                perm_codes = [p.code for p in perms]
+        base = UserOut.model_validate(user)
+        from app.schemas.role import RoleOut
+
+        role_list = [RoleOut.model_validate(r) for r in role_objs]
+        return UserWithRBACOut(**base.model_dump(), roles=role_list, permissions=perm_codes)
 
     async def list_users(self, query: UserQuery, page: int, page_size: int) -> Page[UserOut]:
         """分页查询用户。

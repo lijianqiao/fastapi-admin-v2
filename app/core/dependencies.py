@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 from fastapi.security import OAuth2PasswordBearer
 
 from app.core.exceptions import forbidden, unauthorized
@@ -272,10 +272,24 @@ async def default_page_size() -> int:
         return 20
 
 
+async def resolve_page_size(
+    page_size: Annotated[int | None, Query(ge=1, le=200)] = None,
+    default_ps: Annotated[int, Depends(default_page_size)] = 20,
+) -> int:
+    """解析分页大小：优先使用请求参数，未提供则回退到系统默认。
+
+    使用 Query 保留 422 的校验行为（ge/le）。
+    """
+    return page_size if page_size is not None else default_ps
+
+
 __all__ = [
     "get_current_user_id",
     "has_permission",
     "oauth2_scheme",
+    # dynamic pagination
+    "default_page_size",
+    "resolve_page_size",
     # dao providers
     "get_user_dao",
     "get_user_role_dao",

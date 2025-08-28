@@ -15,6 +15,7 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic.config import ConfigDict
 
 from app.core.exceptions import unprocessable
+from app.schemas.role import RoleOut
 
 
 class UserCreate(BaseModel):
@@ -94,6 +95,13 @@ class UserOut(BaseModel):
     locked_until: datetime | None = None
     last_login_at: datetime | None = None
     created_at: datetime | None = None
+
+
+class UserWithRBACOut(UserOut):
+    """包含角色与权限的用户详情。"""
+
+    roles: list[RoleOut] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
 
 
 class AdminChangePasswordIn(BaseModel):
