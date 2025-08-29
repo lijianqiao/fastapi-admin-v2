@@ -23,7 +23,6 @@ class UserRole(BaseModel):
         role (Role): 关联角色。
 
     Constraints:
-        - 软删唯一：(`user`, `role`, `is_deleted`)。
         - 常用索引：user、role、(user, role)、(id, version)、(is_active, is_deleted)。
     """
 
@@ -36,7 +35,6 @@ class UserRole(BaseModel):
 
     class Meta:  # type: ignore
         table = "user_roles"
-        unique_together = (("user", "role", "is_deleted"),)
         indexes = (
             ("user",),
             ("role",),

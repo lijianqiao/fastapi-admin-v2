@@ -24,20 +24,15 @@ class Permission(BaseModel):
         description (str | None): 权限描述。
 
     Constraints:
-        - 软删唯一：(`code`, `is_deleted`)、(`name`, `is_deleted`)。
         - 常用索引：code、name、(id, version)、(is_active, is_deleted)。
     """
 
-    code = fields.CharField(max_length=64, db_index=True, description="权限编码（唯一，如 user:list）")
-    name = fields.CharField(max_length=64, description="权限名称（展示用）")
+    code = fields.CharField(max_length=64, unique=True, db_index=True, description="权限编码（唯一，如 user:list）")
+    name = fields.CharField(max_length=64, unique=True, description="权限名称（展示用）")
     description = fields.CharField(max_length=255, null=True, description="权限描述")
 
     class Meta:  # type: ignore
         table = "permissions"
-        unique_together = (
-            ("code", "is_deleted"),
-            ("name", "is_deleted"),
-        )
         indexes = (
             ("code",),
             ("name",),

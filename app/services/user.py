@@ -102,7 +102,7 @@ class UserService(BaseService):
             user = await self.dao.create(to_create)
         except IntegrityError as e:
             # 双保险：数据库唯一约束冲突时返回友好错误
-            raise conflict("唯一约束冲突：用户名/手机号/邮箱已存在") from e
+            raise conflict("用户名/手机号/邮箱已存在") from e
         return UserOut.model_validate(user)
 
     @log_operation(action=Perm.USER_UPDATE)

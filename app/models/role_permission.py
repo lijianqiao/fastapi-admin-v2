@@ -23,7 +23,6 @@ class RolePermission(BaseModel):
         permission (Permission): 关联权限。
 
     Constraints:
-        - 软删唯一：(`role`, `permission`, `is_deleted`)。
         - 常用索引：role、permission、(role, permission)、(id, version)、(is_active, is_deleted)。
     """
 
@@ -36,7 +35,6 @@ class RolePermission(BaseModel):
 
     class Meta:  # type: ignore
         table = "role_permissions"
-        unique_together = (("role", "permission", "is_deleted"),)
         indexes = (
             ("role",),
             ("permission",),
