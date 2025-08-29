@@ -21,7 +21,7 @@ class User(BaseModel):
     Attributes:
         username (str): 用户名（唯一，索引）。
         phone (str): 手机号（唯一，必填，索引）。
-        email (str | None): 邮箱（可选，唯一，索引）。
+        email (str | None): 邮箱（唯一，必填，索引）。
         password_hash (str): 密码哈希。
         failed_attempts (int): 连续登录失败次数。
         locked_until (datetime | None): 账户锁定截止时间。

@@ -83,9 +83,8 @@ class UserService(BaseService):
             raise conflict("用户名已存在")
         if await self.dao.exists(phone=data.phone):
             raise conflict("手机号已存在")
-        if data.email is not None and data.email != "":
-            if await self.dao.exists(email=data.email):
-                raise conflict("邮箱已存在")
+        if await self.dao.exists(email=data.email):
+            raise conflict("邮箱已存在")
         # 校验密码策略
         await self._ensure_password_policy(data.password)
         # 构造持久化数据
