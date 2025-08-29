@@ -48,7 +48,7 @@ class PermissionService(BaseService):
         try:
             perm = await self.dao.create(data.model_dump())
         except IntegrityError as e:
-            raise conflict("唯一约束冲突：权限编码/名称已存在") from e
+            raise conflict("权限编码/名称已存在") from e
         await bump_perm_version()
         return PermissionOut.model_validate(perm)
 

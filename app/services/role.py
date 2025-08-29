@@ -60,7 +60,7 @@ class RoleService(BaseService):
         try:
             role = await self.dao.create(data.model_dump())
         except IntegrityError as e:
-            raise conflict("唯一约束冲突：角色编码/名称已存在") from e
+            raise conflict("角色编码/名称已存在") from e
         return RoleOut.model_validate(role)
 
     @log_operation(action=Perm.ROLE_UPDATE)
