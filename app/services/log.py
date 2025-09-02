@@ -8,12 +8,10 @@
 
 from __future__ import annotations
 
-from app.core.constants import Permission as Perm
 from app.dao.log import AuditLogDAO
 from app.schemas.log import AuditLogOut, AuditLogQuery
 from app.schemas.response import Page
 from app.services.base import BaseService
-from app.utils.audit import log_operation
 
 
 class AuditLogService(BaseService):
@@ -25,7 +23,6 @@ class AuditLogService(BaseService):
     def __init__(self, dao: AuditLogDAO | None = None) -> None:
         super().__init__(dao or AuditLogDAO())
 
-    @log_operation(action=Perm.LOG_LIST)
     async def list_logs(self, query: AuditLogQuery, *, actor_id: int | None = None) -> Page[AuditLogOut]:
         """分页查询审计日志。
 
