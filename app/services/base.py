@@ -6,9 +6,7 @@
 @Docs: 服务层基类
 """
 
-from __future__ import annotations
-
-from tortoise import Model
+from tortoise.models import Model
 
 from app.dao.base import BaseDAO
 

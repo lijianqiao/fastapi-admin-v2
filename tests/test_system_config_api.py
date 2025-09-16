@@ -9,8 +9,6 @@
 - 旧版本提交返回 409 冲突
 """
 
-from __future__ import annotations
-
 from fastapi.testclient import TestClient
 
 

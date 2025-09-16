@@ -6,8 +6,6 @@
 @Docs: 权限检查工具
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 from typing import Final
 

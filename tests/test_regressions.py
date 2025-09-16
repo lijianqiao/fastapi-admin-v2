@@ -6,8 +6,6 @@
 @Docs: 回归用例：权限缓存空标记与软删恢复一致性
 """
 
-from __future__ import annotations
-
 import pytest
 from fastapi.testclient import TestClient
 

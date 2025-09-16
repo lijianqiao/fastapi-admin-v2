@@ -6,13 +6,11 @@
 @Docs: DAO 基类，封装通用 CRUD、软删过滤、乐观锁与批量操作
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from tortoise import Model
+from tortoise.models import Model
 
 
 class BaseDAO[ModelType: Model]:

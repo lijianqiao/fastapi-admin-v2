@@ -6,17 +6,10 @@
 @Docs: 权限相关 API
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, Query
 
 from app.core.constants import Permission as Perm
-from app.core.dependencies import (
-    get_current_user_id,
-    get_permission_service,
-    has_permission,
-    resolve_page_size,
-)
+from app.core.dependencies import get_current_user_id, get_permission_service, has_permission, page_size_param
 from app.dao.role import RoleDAO
 from app.dao.role_permission import RolePermissionDAO
 from app.schemas.permission import PermissionCreate, PermissionIdsIn, PermissionOut, PermissionUpdate
@@ -60,8 +53,7 @@ async def create_permission(
 )
 async def update_permission(
     perm_id: int,
-    version: int = Query(..., description="乐观锁版本号"),
-    data: PermissionUpdate | None = None,
+    data: PermissionUpdate,
     svc: PermissionService = Depends(get_permission_service),
     actor_id: int = Depends(get_current_user_id),
 ) -> Response[None]:
@@ -77,7 +69,7 @@ async def update_permission(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.update_permission(perm_id, version, data or PermissionUpdate(), actor_id=actor_id)
+    await svc.update_permission(perm_id, data, actor_id=actor_id)
     return Response[None](data=None)
 
 
@@ -90,7 +82,7 @@ async def update_permission(
 async def list_roles_of_permission(
     perm_id: int,
     page: int = Query(1, ge=1),
-    page_size: int = Depends(resolve_page_size),
+    page_size: int = Depends(page_size_param),
     rp_dao: RolePermissionDAO = Depends(),
     role_dao: RoleDAO = Depends(),
 ) -> Response[Page[RoleOut]]:
@@ -150,7 +142,7 @@ async def get_permission(
 )
 async def list_permissions(
     page: int = Query(1, ge=1),
-    page_size: int = Depends(resolve_page_size),
+    page_size: int = Depends(page_size_param),
     svc: PermissionService = Depends(get_permission_service),
 ) -> Response[Page[PermissionOut]]:
     """分页查询权限列表。
@@ -209,7 +201,7 @@ async def delete_permission(
     Args:
         perm_id (int): 权限ID。
         hard (bool): 是否硬删（默认软删）。
-        page_size: int = Depends(resolve_page_size),
+        svc (PermissionService): 权限服务依赖。
         actor_id (int): 当前操作者ID。
 
     Returns:
@@ -219,82 +211,28 @@ async def delete_permission(
     return Response[None](data=None)
 
 
-@router.get(
-    "/all",
-    dependencies=[Depends(has_permission(Perm.PERMISSION_LIST_ALL))],
-    response_model=Response[Page[PermissionOut]],
-    summary="获取所有权限列表（可包含软删/禁用）",
-)
-async def list_all_permissions(
-    include_deleted: bool = Query(True),
-    include_disabled: bool = Query(True),
-    page: int = Query(1, ge=1),
-    page_size: int = Depends(resolve_page_size),
-    svc: PermissionService = Depends(get_permission_service),
-) -> Response[Page[PermissionOut]]:
-    """获取所有权限列表（可包含软删/禁用）。
-
-    Args:
-        include_deleted (bool): 是否包含软删。
-        include_disabled (bool): 是否包含禁用。
-        page (int): 页码。
-        page_size (int): 每页数量。
-        svc (PermissionService): 权限服务依赖。
-
-    Returns:
-        Response[Page[PermissionOut]]: 统一响应包装的分页权限列表。
-    """
-    data = await svc.list_all_permissions(
-        include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
-    )
-    return Response[Page[PermissionOut]](data=data)
-
-
 @router.post(
     "/delete",
     dependencies=[Depends(has_permission(Perm.PERMISSION_BULK_DELETE))],
     response_model=Response[None],
-    summary="批量删除权限（软删除）",
+    summary="批量删除权限（支持 hard）",
 )
 async def delete_permissions(
     body: PermissionIdsIn,
+    hard: bool = Query(False),
     svc: PermissionService = Depends(get_permission_service),
     actor_id: int = Depends(get_current_user_id),
 ) -> Response[None]:
-    """批量删除权限（软删除）。
+    """批量删除权限。通过 `hard` 决定软删/硬删（默认软删）。
 
     Args:
         body (PermissionIdsIn): 权限ID列表。
+        hard (bool): 是否硬删（默认软删）。
         svc (PermissionService): 权限服务依赖。
         actor_id (int): 当前操作者ID。
 
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.delete_permissions(body.ids, hard=False, actor_id=actor_id)
-    return Response[None](data=None)
-
-
-@router.post(
-    "/delete/hard",
-    dependencies=[Depends(has_permission(Perm.PERMISSION_HARD_DELETE))],
-    response_model=Response[None],
-    summary="批量删除权限（硬删除，不可恢复）",
-)
-async def delete_permissions_hard(
-    body: PermissionIdsIn,
-    svc: PermissionService = Depends(get_permission_service),
-    actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
-    """批量删除权限（硬删除）。
-
-    Args:
-        body (PermissionIdsIn): 权限ID列表。
-        svc (PermissionService): 权限服务依赖。
-        actor_id (int): 当前操作者ID。
-
-    Returns:
-        Response[None]: 统一响应包装的空数据。
-    """
-    await svc.delete_permissions(body.ids, hard=True, actor_id=actor_id)
+    await svc.delete_permissions(body.ids, hard=hard, actor_id=actor_id)
     return Response[None](data=None)

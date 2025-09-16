@@ -6,8 +6,6 @@
 @Docs: 权限服务
 """
 
-from __future__ import annotations
-
 from tortoise.exceptions import IntegrityError
 
 from app.core.constants import Permission as Perm
@@ -48,14 +46,12 @@ class PermissionService(BaseService):
         try:
             perm = await self.dao.create(data.model_dump())
         except IntegrityError as e:
-            raise conflict("权限编码/名称已存在") from e
+            raise conflict("唯一约束冲突：权限编码/名称已存在") from e
         await bump_perm_version()
         return PermissionOut.model_validate(perm)
 
     @log_operation(action=Perm.PERMISSION_UPDATE)
-    async def update_permission(
-        self, perm_id: int, version: int, data: PermissionUpdate, *, actor_id: int | None = None
-    ) -> int:
+    async def update_permission(self, perm_id: int, data: PermissionUpdate, *, actor_id: int | None = None) -> int:
         """更新权限（乐观锁）。
 
         Args:
@@ -67,7 +63,8 @@ class PermissionService(BaseService):
         Returns:
             int: 受影响行数。
         """
-        update_map = dict(data.model_dump(exclude_none=True).items())
+        version = data.version
+        update_map = dict(data.model_dump(exclude_none=True, exclude={"version"}).items())
         if not update_map:
             return 0
         try:

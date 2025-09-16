@@ -6,8 +6,6 @@
 @Docs: 系统配置（可运行时修改，覆盖 .env 默认值）
 """
 
-from __future__ import annotations
-
 from tortoise import fields
 
 from app.models.base import BaseModel

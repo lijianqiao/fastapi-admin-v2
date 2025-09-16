@@ -6,8 +6,6 @@
 @Docs: 系统配置 DAO
 """
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 
 from app.core.exceptions import conflict

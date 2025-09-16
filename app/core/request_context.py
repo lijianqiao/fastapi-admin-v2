@@ -6,8 +6,6 @@
 @Docs: 请求上下文（trace_id、path、method、ip、ua）
 """
 
-from __future__ import annotations
-
 from contextvars import ContextVar
 
 from app.schemas.response import RequestContext

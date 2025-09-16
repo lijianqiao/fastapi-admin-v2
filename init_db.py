@@ -6,8 +6,6 @@
 @Docs: 数据库初始化脚本：重建/清空/初始化内置RBAC与超级管理员
 """
 
-from __future__ import annotations
-
 import argparse
 import asyncio
 from typing import Literal

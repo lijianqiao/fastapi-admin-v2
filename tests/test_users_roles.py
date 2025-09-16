@@ -94,9 +94,11 @@ class TestUsersRoles:
         role_response = client.post("/api/v1/roles/", json=role_data, headers=auth_headers)
         role_id = role_response.json()["data"]["id"]
 
-        # 批量绑定角色
-        bind_data = {"user_ids": [user1_id, user2_id], "role_ids": [role_id]}
-        response = client.post("/api/v1/users/bind-roles/batch", json=bind_data, headers=auth_headers)
+        # 批量绑定角色（改用循环调用单个绑定端点）
+        bind_data = {"user_id": None, "role_ids": [role_id]}
+        for uid in [user1_id, user2_id]:
+            bind_data["user_id"] = uid
+            response = client.post("/api/v1/users/bind-roles", json=bind_data, headers=auth_headers)
         assert response.status_code == 200
 
     def test_unbind_roles_success(self, client: TestClient, auth_headers: dict[str, str]):
@@ -152,13 +154,17 @@ class TestUsersRoles:
         role_response = client.post("/api/v1/roles/", json=role_data, headers=auth_headers)
         role_id = role_response.json()["data"]["id"]
 
-        # 先批量绑定
-        bind_data = {"user_ids": [user1_id, user2_id], "role_ids": [role_id]}
-        client.post("/api/v1/users/bind-roles/batch", json=bind_data, headers=auth_headers)
+        # 先绑定（改为单个绑定端点循环）
+        bind_data = {"user_id": None, "role_ids": [role_id]}
+        for uid in [user1_id, user2_id]:
+            bind_data["user_id"] = uid
+            client.post("/api/v1/users/bind-roles", json=bind_data, headers=auth_headers)
 
-        # 批量解绑角色
-        unbind_data = {"user_ids": [user1_id, user2_id], "role_ids": [role_id]}
-        response = client.post("/api/v1/users/unbind-roles/batch", json=unbind_data, headers=auth_headers)
+        # 批量解绑（改用循环调用单个解绑端点）
+        unbind_data = {"user_id": None, "role_ids": [role_id]}
+        for uid in [user1_id, user2_id]:
+            unbind_data["user_id"] = uid
+            response = client.post("/api/v1/users/unbind-roles", json=unbind_data, headers=auth_headers)
         assert response.status_code == 200
 
     def test_bind_roles_without_auth(self, client: TestClient):

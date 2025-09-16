@@ -6,8 +6,6 @@
 @Docs: 权限相关 Schemas
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
@@ -25,6 +23,7 @@ class PermissionCreate(BaseModel):
 class PermissionUpdate(BaseModel):
     """更新权限入参（部分字段可选）。"""
 
+    version: int = Field(..., ge=0, description="乐观锁版本")
     code: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$")
     name: str | None = Field(default=None, min_length=2, max_length=64)
     description: str | None = Field(default=None, max_length=255)
@@ -50,7 +49,7 @@ class PermissionIdsIn(BaseModel):
     ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> PermissionIdsIn:
+    def _no_dup(self) -> "PermissionIdsIn":
         from app.core.exceptions import unprocessable
 
         if len(set(self.ids)) != len(self.ids):

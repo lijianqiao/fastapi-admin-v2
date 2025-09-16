@@ -6,8 +6,7 @@
 @Docs: Redis 缓存管理器：封装统一的 Key 规范、JSON 序列化、版本号与失效工具
 """
 
-from __future__ import annotations
-
+import builtins
 import json
 from typing import Any, Final
 
@@ -170,7 +169,7 @@ class CacheManager:
         result = await self.client.sadd(key, *members)  # type: ignore[misc]
         return int(result)
 
-    async def smembers(self, key: str) -> set[str]:
+    async def smembers(self, key: str) -> builtins.set[str]:
         """读取集合的所有成员（字符串集合）。
 
         Args:

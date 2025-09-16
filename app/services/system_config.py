@@ -6,8 +6,6 @@
 @Docs: 系统配置服务
 """
 
-from __future__ import annotations
-
 from app.core.config import get_settings
 from app.dao.system_config import SystemConfigDAO
 from app.schemas.system_config import (
@@ -96,18 +94,11 @@ class SystemConfigService:
             to_update["session_timeout_hours"] = payload.login_security.session_timeout_hours
             to_update["force_https"] = payload.login_security.force_https
         if to_update:
-            # 传入版本用于乐观锁
-            to_update["version"] = (
-                payload.version
-            )  # 只是用于校验，DAO 内部会读取当前 version 并调用 update_with_version
-            # DAO.update_partial 期望纯字段；这里剔除 version 后传入，并在 DAO 中用当前 version 做匹配
-            version = int(payload.version)
-            to_update_clean = {k: v for k, v in to_update.items() if k != "version"}
-            # 直接使用 DAO 的 update_with_version，确保 updated_at 刷新
+            # 使用 DAO 的并发安全更新方法
             m = await self.dao.get_singleton()
-            if m.version != version:
+            if int(getattr(m, "version", 0) or 0) != int(payload.version):
                 from app.core.exceptions import conflict
 
                 raise conflict("配置已被其他人修改，请刷新后重试")
-            await self.dao.update_with_version(m.id, m.version, to_update_clean)
+            await self.dao.update_partial(to_update)
         return await self.get_config()

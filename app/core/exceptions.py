@@ -6,8 +6,6 @@
 @Docs: 自定义异常与统一异常处理器
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status

@@ -6,8 +6,6 @@
 @Docs: 角色服务
 """
 
-from __future__ import annotations
-
 from tortoise.exceptions import IntegrityError
 
 from app.core.constants import Permission as Perm
@@ -60,11 +58,11 @@ class RoleService(BaseService):
         try:
             role = await self.dao.create(data.model_dump())
         except IntegrityError as e:
-            raise conflict("角色编码/名称已存在") from e
+            raise conflict("唯一约束冲突：角色编码/名称已存在") from e
         return RoleOut.model_validate(role)
 
     @log_operation(action=Perm.ROLE_UPDATE)
-    async def update_role(self, role_id: int, version: int, data: RoleUpdate, *, actor_id: int | None = None) -> int:
+    async def update_role(self, role_id: int, data: RoleUpdate, *, actor_id: int | None = None) -> int:
         """更新角色（乐观锁）。
 
         Args:
@@ -79,7 +77,8 @@ class RoleService(BaseService):
         Raises:
             conflict: 当版本冲突或记录不存在时抛出。
         """
-        update_map = dict(data.model_dump(exclude_none=True))
+        version = data.version
+        update_map = dict(data.model_dump(exclude_none=True, exclude={"version"}))
         if not update_map:
             return 0
         try:

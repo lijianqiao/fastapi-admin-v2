@@ -6,8 +6,6 @@
 @Docs: 常量定义
 """
 
-from __future__ import annotations
-
 from enum import StrEnum
 
 
@@ -63,8 +61,8 @@ class Permission(StrEnum):
     PERMISSION_LIST_ALL = "permission:list_all"
 
     # 系统配置
-    SYSTEM_CONFIG_READ = "system_config:read"
-    SYSTEM_CONFIG_UPDATE = "system_config:update"
+    SYSTEM_CONFIG_READ = "system:config:read"
+    SYSTEM_CONFIG_UPDATE = "system:config:update"
 
 
 __all__ = ["Permission"]

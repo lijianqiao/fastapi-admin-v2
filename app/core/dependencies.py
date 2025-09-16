@@ -6,8 +6,6 @@
 @Docs: 依赖注入
 """
 
-from __future__ import annotations
-
 from typing import Annotated
 
 from fastapi import Depends, Query, Request
@@ -26,6 +24,7 @@ from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
 from app.services import AuditLogService, AuthService, PermissionService, RoleService, UserService
 from app.services.system_config import SystemConfigService
+from app.utils.cache_manager import get_cache_manager
 from app.utils.logger import logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -50,16 +49,38 @@ async def get_current_user_id(
     log = logger.bind(trace_id=trace_id)
 
     payload = decode_token(token)
+    # 令牌类型必须为 access
+    typ = payload.get("typ")
+    if typ != "access":
+        ip = request.client.host if request.client else "-"
+        log.warning(f"认证失败：令牌类型无效 typ={typ}, path={request.url.path}, ip={ip}")
+        raise unauthorized("无效的访问令牌")
+
     subject = payload.get("sub")
     if not subject:
         ip = request.client.host if request.client else "-"
         log.warning(f"认证失败：缺少 sub，path={request.url.path}, ip={ip}")
         raise unauthorized("令牌主题无效")
     try:
-        return int(subject)
+        user_id = int(subject)
     except ValueError as e:
         log.warning(f"认证失败：sub 非法，sub={subject}, path={request.url.path}")
         raise unauthorized("主题格式无效") from e
+
+    # 校验令牌版本以支持注销与强制下线
+    try:
+        ver_claim = int(payload.get("ver") or 0)
+    except Exception:
+        ver_claim = 0
+    cm = get_cache_manager()
+    current_ver = await cm.get_version(f"auth:ver:u:{user_id}", default=1)
+    if ver_claim != current_ver:
+        log.warning(
+            f"认证失败：令牌版本不匹配 user_id={user_id}, token_ver={ver_claim}, current_ver={current_ver}, path={request.url.path}"
+        )
+        raise unauthorized("令牌已失效，请重新登录")
+
+    return user_id
 
 
 def has_permission(required: str):
@@ -89,7 +110,10 @@ def has_permission(required: str):
             log.warning(f"账号已禁用或不存在：user_id={user_id}, path={request.url.path}")
             raise forbidden("账号已禁用")
 
-        allowed = await user_has_permissions(user_id, [required])
+        req_value = getattr(required, "value", required)
+        if not isinstance(req_value, str):
+            req_value = str(req_value)
+        allowed = await user_has_permissions(user_id, [req_value])
         if not allowed:
             log.warning(f"权限不足：user_id={user_id}, required={required}, path={request.url.path}")
             raise forbidden("权限不足")
@@ -272,24 +296,33 @@ async def default_page_size() -> int:
         return 20
 
 
-async def resolve_page_size(
-    page_size: int | None = Query(None, ge=1, le=200),
-    default_ps: int = Depends(default_page_size),
-) -> int:
-    """解析分页大小：优先使用请求参数，未提供则回退到系统默认。
+async def page_size_param(page_size: int | None = Query(None, ge=1, le=200)) -> int:
+    """统一分页大小依赖
 
-    使用 Query 保留 422 的校验行为（ge/le）。
+    - 若显式传入 `page_size`，使用并通过 ge/le 校验
+    - 若未传入，则从系统配置读取默认分页大小，并做 1..200 的兜底裁剪
     """
-    return page_size if page_size is not None else default_ps
+    if page_size is not None:
+        return page_size
+    try:
+        cfg = await SystemConfigDAO().get_singleton()
+        ps = int(getattr(cfg, "default_page_size", 20) or 20)
+    except Exception:
+        ps = 20
+    # 兜底裁剪，避免配置异常造成过大/过小（统一上限 200）
+    if ps < 1:
+        ps = 1
+    if ps > 200:
+        ps = 200
+    return ps
 
 
 __all__ = [
     "get_current_user_id",
     "has_permission",
     "oauth2_scheme",
-    # dynamic pagination
     "default_page_size",
-    "resolve_page_size",
+    "page_size_param",
     # dao providers
     "get_user_dao",
     "get_user_role_dao",

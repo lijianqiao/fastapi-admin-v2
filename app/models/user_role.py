@@ -6,8 +6,6 @@
 @Docs: 数据模型：用户-角色 多对多中间表
 """
 
-from __future__ import annotations
-
 from tortoise import fields
 
 from app.models.base import BaseModel
@@ -23,6 +21,7 @@ class UserRole(BaseModel):
         role (Role): 关联角色。
 
     Constraints:
+        - 软删唯一：(`user`, `role`, `is_deleted`)。
         - 常用索引：user、role、(user, role)、(id, version)、(is_active, is_deleted)。
     """
 
@@ -35,6 +34,7 @@ class UserRole(BaseModel):
 
     class Meta:  # type: ignore
         table = "user_roles"
+        unique_together = (("user", "role", "is_deleted"),)
         indexes = (
             ("user",),
             ("role",),

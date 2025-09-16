@@ -6,8 +6,6 @@
 @Docs: 密码策略校验工具。
 """
 
-from __future__ import annotations
-
 import re
 
 

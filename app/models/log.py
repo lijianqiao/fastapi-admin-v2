@@ -6,8 +6,6 @@
 @Docs: 数据模型：操作审计日志
 """
 
-from __future__ import annotations
-
 from tortoise import fields
 
 from app.models.base import BaseModel

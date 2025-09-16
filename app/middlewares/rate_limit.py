@@ -6,8 +6,6 @@
 @Docs: 基于 Redis 的轻量限流中间件与工具
 """
 
-from __future__ import annotations
-
 import time
 
 from fastapi import HTTPException, Request, status

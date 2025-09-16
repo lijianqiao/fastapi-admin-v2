@@ -6,8 +6,6 @@
 @Docs: 应用生命周期管理
 """
 
-from __future__ import annotations
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Literal, cast
@@ -48,11 +46,11 @@ def setup_middlewares(app: FastAPI) -> None:
     allow_credentials = settings.CORS_ALLOW_CREDENTIALS
     # 生产安全：当 allow_credentials=True 时不允许 *
     if allow_credentials and any(o == "*" for o in allow_origins):
-        allow_origins = [] if settings.ENVIRONMENT != "development" else ["*"]
+        allow_origins = ["*"] if settings.ENVIRONMENT == "development" else []
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allow_origins or ["*"],
+        allow_origins=allow_origins,  # 不再回退为 *，确保生产安全
         allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],

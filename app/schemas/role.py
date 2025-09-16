@@ -6,8 +6,6 @@
 @Docs: 角色相关 Schemas
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
@@ -25,6 +23,7 @@ class RoleCreate(BaseModel):
 class RoleUpdate(BaseModel):
     """更新角色入参（部分字段可选）。"""
 
+    version: int = Field(..., ge=0, description="乐观锁版本")
     name: str | None = Field(default=None, min_length=2, max_length=64)
     code: str | None = Field(default=None, min_length=2, max_length=64, pattern=r"^[a-z0-9_\-]{2,64}$")
     description: str | None = Field(default=None, max_length=255)
@@ -51,7 +50,7 @@ class RoleBindIn(BaseModel):
     target_ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> RoleBindIn:
+    def _no_dup(self) -> "RoleBindIn":
         if len(set(self.target_ids)) != len(self.target_ids):
             from app.core.exceptions import unprocessable
 
@@ -65,7 +64,7 @@ class RoleIdsIn(BaseModel):
     ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> RoleIdsIn:
+    def _no_dup(self) -> "RoleIdsIn":
         if len(set(self.ids)) != len(self.ids):
             from app.core.exceptions import unprocessable
 
@@ -80,7 +79,7 @@ class RolesBindIn(BaseModel):
     permission_ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> RolesBindIn:
+    def _no_dup(self) -> "RolesBindIn":
         from app.core.exceptions import unprocessable
 
         if len(set(self.role_ids)) != len(self.role_ids):

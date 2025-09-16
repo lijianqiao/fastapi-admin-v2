@@ -6,8 +6,6 @@
 @Docs: 通用查询与分页入参
 """
 
-from __future__ import annotations
-
 from pydantic import BaseModel, Field
 
 

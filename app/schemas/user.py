@@ -6,8 +6,6 @@
 @Docs: 用户相关 Schemas
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 
 import phonenumbers
@@ -15,7 +13,6 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic.config import ConfigDict
 
 from app.core.exceptions import unprocessable
-from app.schemas.role import RoleOut
 
 
 class UserCreate(BaseModel):
@@ -30,7 +27,7 @@ class UserCreate(BaseModel):
     avatar_url: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
-    def _validate_phone(self) -> UserCreate:
+    def _validate_phone(self) -> "UserCreate":
         """使用 phonenumbers 校验手机号，默认 CN 区号。
 
         兼容传入本地号（无国家码）与 E.164（+8613800000000）。
@@ -49,6 +46,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     """更新用户入参（部分字段可选）。"""
 
+    version: int = Field(..., ge=0, description="乐观锁版本")
     username: str | None = Field(default=None, min_length=3, max_length=64)
     phone: str | None = Field(default=None, min_length=6, max_length=20)
     email: EmailStr | None = None
@@ -59,7 +57,7 @@ class UserUpdate(BaseModel):
     avatar_url: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
-    def _validate_phone(self) -> UserUpdate:
+    def _validate_phone(self) -> "UserUpdate":
         """使用 phonenumbers 校验可选手机号。"""
         if self.phone is None:
             return self
@@ -97,13 +95,6 @@ class UserOut(BaseModel):
     created_at: datetime | None = None
 
 
-class UserWithRBACOut(UserOut):
-    """包含角色与权限的用户详情。"""
-
-    roles: list[RoleOut] = Field(default_factory=list)
-    permissions: list[str] = Field(default_factory=list)
-
-
 class AdminChangePasswordIn(BaseModel):
     """管理员修改用户密码入参。"""
 
@@ -111,7 +102,7 @@ class AdminChangePasswordIn(BaseModel):
     confirm_password: str = Field(min_length=6, max_length=64)
 
     @model_validator(mode="after")
-    def _check_confirm(self) -> AdminChangePasswordIn:
+    def _check_confirm(self) -> "AdminChangePasswordIn":
         """校验新密码与确认密码一致。"""
         if self.new_password != self.confirm_password:
             raise unprocessable("两次密码不一致")
@@ -126,7 +117,7 @@ class SelfChangePasswordIn(BaseModel):
     confirm_password: str = Field(min_length=6, max_length=64)
 
     @model_validator(mode="after")
-    def _check_confirm(self) -> SelfChangePasswordIn:
+    def _check_confirm(self) -> "SelfChangePasswordIn":
         """校验新密码与确认密码一致，且不等于旧密码。"""
         if self.new_password != self.confirm_password:
             raise unprocessable("两次密码不一致")
@@ -141,7 +132,7 @@ class UserIdsIn(BaseModel):
     ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> UserIdsIn:
+    def _no_dup(self) -> "UserIdsIn":
         if len(set(self.ids)) != len(self.ids):
             raise unprocessable("用户ID 列表存在重复")
         return self
@@ -154,7 +145,7 @@ class UserBindIn(BaseModel):
     role_ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> UserBindIn:
+    def _no_dup(self) -> "UserBindIn":
         if len(set(self.role_ids)) != len(self.role_ids):
             raise unprocessable("角色ID 列表存在重复")
         return self
@@ -167,7 +158,7 @@ class UsersBindIn(BaseModel):
     role_ids: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _no_dup(self) -> UsersBindIn:
+    def _no_dup(self) -> "UsersBindIn":
         if len(set(self.user_ids)) != len(self.user_ids):
             raise unprocessable("用户ID 列表存在重复")
         if len(set(self.role_ids)) != len(self.role_ids):

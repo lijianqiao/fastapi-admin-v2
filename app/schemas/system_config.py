@@ -6,8 +6,6 @@
 @Docs: 系统配置 Schemas
 """
 
-from __future__ import annotations
-
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -22,7 +20,7 @@ class ProjectSettings(BaseModel):
 class PaginationSettings(BaseModel):
     """分页设置"""
 
-    page_size: int = Field(default=20, ge=1, le=500, description="默认分页大小")
+    page_size: int = Field(default=20, ge=1, le=200, description="默认分页大小")
 
 
 class PasswordPolicySettings(BaseModel):
@@ -36,7 +34,7 @@ class PasswordPolicySettings(BaseModel):
     expire_days: int = Field(default=0, ge=0, le=3650, description="密码有效期（天），0 表示永不过期")
 
     @model_validator(mode="after")
-    def _validate_ranges(self) -> PasswordPolicySettings:
+    def _validate_ranges(self) -> "PasswordPolicySettings":
         # 如果四项全为 False，允许通过，表示仅长度限制
         return self
 

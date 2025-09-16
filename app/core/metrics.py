@@ -6,8 +6,6 @@
 @Docs: Prometheus 指标与监控中间件
 """
 
-from __future__ import annotations
-
 import asyncio
 import time
 
@@ -79,7 +77,12 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             StarletteResponse: 响应对象
         """
         method = request.method
-        path = request.url.path
+        # 使用路由模板降低高基数，如 /users/{user_id}
+        try:
+            route = request.scope.get("route")
+            path = getattr(route, "path", None) or request.url.path
+        except Exception:
+            path = request.url.path
         start = time.perf_counter()
         status_code = 500  # 默认状态码
         REQUEST_IN_PROGRESS.labels(method, path).inc()

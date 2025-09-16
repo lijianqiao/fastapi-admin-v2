@@ -6,17 +6,10 @@
 @Docs: 审计日志 API
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, Query
 
 from app.core.constants import Permission as Perm
-from app.core.dependencies import (
-    get_audit_log_service,
-    get_current_user_id,
-    has_permission,
-    resolve_page_size,
-)
+from app.core.dependencies import get_audit_log_service, get_current_user_id, has_permission, page_size_param
 from app.schemas.log import AuditLogOut, AuditLogQuery
 from app.schemas.response import Page, Response
 from app.services import AuditLogService
@@ -35,7 +28,7 @@ async def list_logs(
     action: str | None = Query(None),
     trace_id: str | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Depends(resolve_page_size),
+    page_size: int = Depends(page_size_param),
     svc: AuditLogService = Depends(get_audit_log_service),
 ) -> Response[Page[AuditLogOut]]:
     """分页查询审计日志。
@@ -65,7 +58,7 @@ async def list_logs(
 )
 async def list_my_logs(
     page: int = Query(1, ge=1),
-    page_size: int = Depends(resolve_page_size),
+    page_size: int = Depends(page_size_param),
     svc: AuditLogService = Depends(get_audit_log_service),
     actor_id: int = Depends(get_current_user_id),
 ) -> Response[Page[AuditLogOut]]:

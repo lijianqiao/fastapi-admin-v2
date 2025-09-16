@@ -6,8 +6,6 @@
 @Docs: 审计日志装饰器与工具
 """
 
-from __future__ import annotations
-
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any, ParamSpec, TypeVar

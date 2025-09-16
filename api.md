@@ -11,9 +11,7 @@
 ```
 - 校验失败：`422`，返回统一错误结构
 - 分页参数：`page`(>=1, 默认1)、`page_size`(1~200, 默认20)
- - 乐观锁：更新操作一般需要提供版本号（version）。
-   - 用户/角色/权限更新：使用查询参数 `?version=当前版本`
-   - 系统配置更新：在 JSON Body 中提供 `"version": 当前版本`
+- 乐观锁：所有更新操作均在请求体 JSON 中携带 `version`（用户/角色/权限、系统配置一致）。
 
 ---
 
@@ -61,8 +59,8 @@
     ```
 
 - 更新用户（user:update，乐观锁）
-  - PUT `/api/v1/users/{user_id}?version=1`
-  - JSON：任意可选字段（username/phone/email/password/is_active/nickname/bio/avatar_url）
+  - PUT `/api/v1/users/{user_id}`
+  - JSON（必须包含 `version`，其余可选）：`{ "version": 1, "username"?, "phone"?, "email"?, "password"?, "is_active"?, "nickname"?, "bio"?, "avatar_url"? }`
 
 - 获取用户详情（user:list）
   - GET `/api/v1/users/{user_id}`
@@ -70,18 +68,11 @@
 - 分页列表（user:list）
   - GET `/api/v1/users/?keyword=&page=1&page_size=20`
 
-- 全量列表（含软删/禁用）（user:list_all）
-  - GET `/api/v1/users/all?include_deleted=true&include_disabled=true&page=1&page_size=20`
-
 - 删除用户（默认软删）（user:delete）
   - DELETE `/api/v1/users/{user_id}?hard=false`
-
-- 批量软删（user:bulk_delete）
-  - POST `/api/v1/users/delete`
-  - JSON：`{ "ids": [1,2,3] }`
-
-- 批量硬删（user:hard_delete）
-  - POST `/api/v1/users/delete/hard`
+  
+- 批量删除（支持软/硬删）（user:bulk_delete）
+  - POST `/api/v1/users/delete?hard=false|true`
   - JSON：`{ "ids": [1,2,3] }`
 
 - 批量禁用（user:disable）
@@ -100,18 +91,9 @@
   - JSON：`{ "user_id": 1, "role_ids": [1,2] }`
   - 返回：`Response<BindStats>`（added/restored/existed）
 
-- 批量绑定角色（user:bind_roles_batch）
-  - POST `/api/v1/users/bind-roles/batch`
-  - JSON：`{ "user_ids": [1,2], "role_ids": [1,2] }`
-  - 返回：`Response<BindStats>`
-
 - 解绑角色（user:unbind_roles）
   - POST `/api/v1/users/unbind-roles`
   - JSON 同绑定
-
-- 批量解绑角色（user:unbind_roles_batch）
-  - POST `/api/v1/users/unbind-roles/batch`
-  - JSON：`{ "user_ids": [1,2], "role_ids": [1,2] }`
 
 ---
 
@@ -122,8 +104,8 @@
   - JSON：`{ "code":"admin", "name":"管理员", "description": "..." }`
 
 - 更新角色（role:update，乐观锁）
-  - PUT `/api/v1/roles/{role_id}?version=1`
-  - JSON：任意可选字段（name/code/is_active/description）
+  - PUT `/api/v1/roles/{role_id}`
+  - JSON（必须包含 `version`，其余可选）：`{ "version": 1, "name"?, "code"?, "is_active"?, "description"? }`
 
 - 获取角色详情（role:list）
   - GET `/api/v1/roles/{role_id}`
@@ -131,18 +113,11 @@
 - 分页列表（role:list）
   - GET `/api/v1/roles/?page=1&page_size=20`
 
-- 全量列表（含软删/禁用）（role:list_all）
-  - GET `/api/v1/roles/all?include_deleted=true&include_disabled=true&page=1&page_size=20`
-
 - 删除角色（默认软删）（role:delete）
   - DELETE `/api/v1/roles/{role_id}?hard=false`
-
-- 批量软删（role:bulk_delete）
-  - POST `/api/v1/roles/delete`
-  - JSON：`{ "ids": [1,2,3] }`
-
-- 批量硬删（role:hard_delete）
-  - POST `/api/v1/roles/delete/hard`
+  
+- 批量删除（支持软/硬删）（role:bulk_delete）
+  - POST `/api/v1/roles/delete?hard=false|true`
   - JSON：`{ "ids": [1,2,3] }`
 
 - 批量禁用（role:disable）
@@ -156,17 +131,10 @@
   - POST `/api/v1/roles/bind-permissions`
   - JSON：`{ "role_id": 1, "target_ids": [1,2] }`
   - 返回：`Response<BindStats>`
-
-- 批量绑定权限（role:bind_permissions_batch）
-  - POST `/api/v1/roles/bind-permissions/batch`
-  - JSON：`{ "role_ids": [1,2], "permission_ids": [1,2] }`
   - 返回：`Response<BindStats>`
 
 - 解绑权限（role:unbind_permissions）
   - POST `/api/v1/roles/unbind-permissions`
-
-- 批量解绑权限（role:unbind_permissions_batch）
-  - POST `/api/v1/roles/unbind-permissions/batch`
 
 ---
 
@@ -177,7 +145,8 @@
   - JSON：`{ "code":"user:list", "name":"用户列表", "description":"..." }`
 
 - 更新权限（permission:update，乐观锁）
-  - PUT `/api/v1/permissions/{perm_id}?version=1`
+  - PUT `/api/v1/permissions/{perm_id}`
+  - JSON（必须包含 `version`，其余可选）：`{ "version": 1, "code"?, "name"?, "description"?, "is_active"? }`
 
 - 获取权限详情（permission:list）
   - GET `/api/v1/permissions/{perm_id}`
@@ -185,18 +154,11 @@
 - 分页列表（permission:list）
   - GET `/api/v1/permissions/?page=1&page_size=20`
 
-- 全量列表（含软删/禁用）（permission:list_all）
-  - GET `/api/v1/permissions/all?include_deleted=true&include_disabled=true&page=1&page_size=20`
-
 - 删除权限（默认软删）（permission:delete）
   - DELETE `/api/v1/permissions/{perm_id}?hard=false`
-
-- 批量软删（permission:bulk_delete）
-  - POST `/api/v1/permissions/delete`
-  - JSON：`{ "ids": [1,2,3] }`
-
-- 批量硬删（permission:hard_delete）
-  - POST `/api/v1/permissions/delete/hard`
+  
+- 批量删除（支持软/硬删）（permission:bulk_delete）
+  - POST `/api/v1/permissions/delete?hard=false|true`
   - JSON：`{ "ids": [1,2,3] }`
 
 - 批量禁用（permission:disable）

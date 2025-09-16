@@ -6,8 +6,6 @@
 @Docs: 认证服务（登录、刷新、注销占位）
 """
 
-from __future__ import annotations
-
 from datetime import UTC, datetime, timedelta
 
 from app.core.config import get_settings

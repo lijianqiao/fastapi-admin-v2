@@ -6,7 +6,7 @@
 @Docs: Force HTTPS 中间件
 """
 
-from __future__ import annotations
+import time
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -21,6 +21,10 @@ class ForceHTTPSMiddleware(BaseHTTPMiddleware):
         优先读取 `X-Forwarded-Proto`（反向代理场景），否则使用 request.url.scheme。
 
     """
+
+    _cache_flag: bool | None = None
+    _cache_expire_at: float = 0.0
+    _cache_ttl_seconds: int = 10
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:  # type: ignore[override]
         # 非生产环境直接放行
@@ -38,13 +42,20 @@ class ForceHTTPSMiddleware(BaseHTTPMiddleware):
         if scheme == "https":
             return await call_next(request)
 
-        # 非 https：按系统配置决定是否拦截
+        # 非 https：按系统配置决定是否拦截（带10s内存缓存）
+        enabled: bool = False
+        now = time.monotonic()
         try:
-            from app.dao.system_config import SystemConfigDAO
+            if self._cache_flag is not None and now < self._cache_expire_at:
+                enabled = bool(self._cache_flag)
+            else:
+                from app.dao.system_config import SystemConfigDAO
 
-            dao = SystemConfigDAO()
-            cfg = await dao.get_singleton()
-            enabled = bool(getattr(cfg, "force_https", False))
+                dao = SystemConfigDAO()
+                cfg = await dao.get_singleton()
+                enabled = bool(getattr(cfg, "force_https", False))
+                self._cache_flag = enabled
+                self._cache_expire_at = now + self._cache_ttl_seconds
         except Exception:
             enabled = False
 

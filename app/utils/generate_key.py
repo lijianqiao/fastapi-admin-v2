@@ -33,4 +33,4 @@ if __name__ == "__main__":
     print("\n=== 生成的SECRET_KEY2 ===")
     print(secret_key2)
     print("======================\n")
-    print("请将此密钥复制到.env文件的SECRET_KEY中")
+    print("请将此密钥复制到 .env 文件的 JWT_SECRET_KEY 中")

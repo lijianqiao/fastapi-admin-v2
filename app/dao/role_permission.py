@@ -6,8 +6,6 @@
 @Docs: 角色-权限关系 DAO
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from datetime import UTC, datetime
 

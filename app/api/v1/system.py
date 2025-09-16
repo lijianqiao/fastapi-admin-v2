@@ -8,8 +8,6 @@
 提供系统运行时配置的读取与更新，覆盖 .env 默认值。
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends
 
 from app.core.constants import Permission as Perm

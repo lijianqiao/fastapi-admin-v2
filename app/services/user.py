@@ -6,17 +6,12 @@
 @Docs: 用户服务
 """
 
-from __future__ import annotations
-
 from tortoise.exceptions import IntegrityError
 
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
 from app.core.permissions import bump_perm_version
 from app.core.security import hash_password, verify_password
-from app.dao.permission import PermissionDAO
-from app.dao.role import RoleDAO
-from app.dao.role_permission import RolePermissionDAO
 from app.dao.system_config import SystemConfigDAO
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
@@ -31,7 +26,6 @@ from app.schemas.user import (
     UserQuery,
     UsersBindIn,
     UserUpdate,
-    UserWithRBACOut,
 )
 from app.services.base import BaseService
 from app.utils.audit import log_operation
@@ -83,8 +77,9 @@ class UserService(BaseService):
             raise conflict("用户名已存在")
         if await self.dao.exists(phone=data.phone):
             raise conflict("手机号已存在")
-        if await self.dao.exists(email=data.email):
-            raise conflict("邮箱已存在")
+        if data.email is not None and data.email != "":
+            if await self.dao.exists(email=data.email):
+                raise conflict("邮箱已存在")
         # 校验密码策略
         await self._ensure_password_policy(data.password)
         # 构造持久化数据
@@ -101,16 +96,17 @@ class UserService(BaseService):
             user = await self.dao.create(to_create)
         except IntegrityError as e:
             # 双保险：数据库唯一约束冲突时返回友好错误
-            raise conflict("用户名/手机号/邮箱已存在") from e
+            raise conflict("唯一约束冲突：用户名/手机号/邮箱已存在") from e
         return UserOut.model_validate(user)
 
     @log_operation(action=Perm.USER_UPDATE)
-    async def update_user(self, user_id: int, version: int, data: UserUpdate, *, actor_id: int | None = None) -> int:
+    async def update_user(self, user_id: int, data: UserUpdate, *, actor_id: int | None = None) -> int:
+        # async def update_user(self, user_id: int, version: int, data: UserUpdate, *, actor_id: int | None = None) -> int:
         """更新用户（乐观锁）。
 
         Args:
             user_id (int): 用户ID。
-            version (int): 当前版本号（乐观锁校验）。
+            # version (int): 当前版本号（乐观锁校验）。
             data (UserUpdate): 更新入参（部分字段可选）。
             actor_id (int | None): 操作者ID，用于审计日志记录。
 
@@ -120,6 +116,7 @@ class UserService(BaseService):
         Raises:
             conflict: 当版本冲突或记录不存在时抛出。
         """
+        version = data.version
         update_map: dict[str, object] = {}
         if data.username is not None:
             update_map["username"] = data.username
@@ -134,9 +131,12 @@ class UserService(BaseService):
         if data.avatar_url is not None:
             update_map["avatar_url"] = data.avatar_url
         if data.password is not None:
+            # 校验密码策略
+            await self._ensure_password_policy(data.password)
             update_map["password_hash"] = hash_password(data.password)
         if data.is_active is not None:
             update_map["is_active"] = data.is_active
+        # 若只携带 version 而无业务字段，认为无更新
         if not update_map:
             return 0
         affected = await self.dao.update_with_version(user_id, version, update_map)
@@ -159,33 +159,10 @@ class UserService(BaseService):
         user = await self.dao.get_by_id(user_id)
         if not user:
             raise not_found("用户不存在")
+        # 组装角色与权限（按需查询）
+        await self.user_role_dao.list_roles_of_user(user_id)
+        # 返回基本用户信息，角色/权限可在 API 层扩展字段返回
         return UserOut.model_validate(user)
-
-    async def get_user_with_rbac(self, user_id: int) -> UserWithRBACOut:
-        """查询用户详情并附带角色与权限列表。"""
-        user = await self.dao.get_by_id(user_id)
-        if not user:
-            raise not_found("用户不存在")
-        # 角色
-        rels = await self.user_role_dao.list_roles_of_user(user_id)
-        role_ids = [r.role_id for r in rels]  # type: ignore[attr-defined]
-        role_objs = []
-        if role_ids:
-            role_objs = await (RoleDAO()).get_many_by_ids(role_ids)
-        # 权限
-        perm_codes: list[str] = []
-        if role_ids:
-            rp_dao = RolePermissionDAO()
-            rels2 = await rp_dao.list_by_role_ids(role_ids)
-            perm_ids = [rp.permission_id for rp in rels2]  # type: ignore[attr-defined]
-            if perm_ids:
-                perms = await (PermissionDAO()).list_by_ids(perm_ids)
-                perm_codes = [p.code for p in perms]
-        base = UserOut.model_validate(user)
-        from app.schemas.role import RoleOut
-
-        role_list = [RoleOut.model_validate(r) for r in role_objs]
-        return UserWithRBACOut(**base.model_dump(), roles=role_list, permissions=perm_codes)
 
     async def list_users(self, query: UserQuery, page: int, page_size: int) -> Page[UserOut]:
         """分页查询用户。
@@ -395,7 +372,17 @@ class UserService(BaseService):
             raise conflict("两次密码不一致")
         await self._ensure_password_policy(payload.new_password)
         hashed = hash_password(payload.new_password)
-        await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
+        affected = await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
+        if affected == 0:
+            # 轻量重试：获取最新版本后再试一次，避免并发导致的瞬时冲突
+            latest = await self.dao.get_by_id(user_id)
+            if not latest:
+                raise not_found("用户不存在")
+            affected = await self.dao.update_with_version(
+                latest.id, version=latest.version, data={"password_hash": hashed}
+            )
+            if affected == 0:
+                raise conflict("更新冲突或记录不存在")
 
     @log_operation(action=Perm.USER_UNLOCK)
     async def unlock_user(self, user_id: int, *, actor_id: int | None = None) -> None:
@@ -411,6 +398,8 @@ class UserService(BaseService):
         user = await self.dao.get_by_id(user_id)
         if not user:
             raise not_found("用户不存在")
-        await self.dao.update_with_version(
+        affected = await self.dao.update_with_version(
             user.id, version=user.version, data={"failed_attempts": 0, "locked_until": None}
         )
+        if affected == 0:
+            raise conflict("更新冲突或记录不存在")

@@ -146,8 +146,8 @@ class TestUsers:
         user_id = create_response.json()["data"]["id"]
 
         # 更新用户
-        update_data = {"nickname": "已更新用户"}
-        response = client.put(f"/api/v1/users/{user_id}?version=0", json=update_data, headers=auth_headers)
+        update_data = {"version": 0, "nickname": "已更新用户"}
+        response = client.put(f"/api/v1/users/{user_id}", json=update_data, headers=auth_headers)
         assert response.status_code == 200
 
     def test_update_user_version_conflict(self, client: TestClient, auth_headers: dict[str, str]):
@@ -164,8 +164,8 @@ class TestUsers:
         user_id = create_response.json()["data"]["id"]
 
         # 使用错误的版本号更新
-        update_data = {"nickname": "冲突更新"}
-        response = client.put(f"/api/v1/users/{user_id}?version=999", json=update_data, headers=auth_headers)
+        update_data = {"version": 999, "nickname": "冲突更新"}
+        response = client.put(f"/api/v1/users/{user_id}", json=update_data, headers=auth_headers)
         assert response.status_code == 409
 
     def test_disable_users(self, client: TestClient, auth_headers: dict[str, str]):

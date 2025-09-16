@@ -6,8 +6,6 @@
 @Docs: 请求上下文中间件：注入 trace_id 与请求元信息
 """
 
-from __future__ import annotations
-
 import uuid
 
 from fastapi import Request

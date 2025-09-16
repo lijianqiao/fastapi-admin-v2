@@ -6,8 +6,6 @@
 @Docs: 主应用
 """
 
-from __future__ import annotations
-
 from fastapi import FastAPI
 
 from app.api import api_router

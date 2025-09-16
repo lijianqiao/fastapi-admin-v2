@@ -6,8 +6,6 @@
 @Docs: 审计日志 Schemas
 """
 
-from __future__ import annotations
-
 from datetime import datetime
 
 from pydantic import BaseModel, Field

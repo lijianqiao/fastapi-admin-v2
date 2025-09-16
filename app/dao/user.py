@@ -6,8 +6,6 @@
 @Docs: 用户 DAO
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 
 from tortoise.expressions import Q

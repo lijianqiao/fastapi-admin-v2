@@ -6,8 +6,6 @@
 @Docs: 权限 DAO
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 
 from app.dao.base import BaseDAO

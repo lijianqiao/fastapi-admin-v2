@@ -67,4 +67,4 @@ async def health_check() -> Response[dict]:
     return Response(data=result)
 
 
-__all__ = ["v1_router"]
+__all__ = ["api_router"]

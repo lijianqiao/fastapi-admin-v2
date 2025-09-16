@@ -6,17 +6,20 @@
 @Docs: 角色相关 API
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, Query
 
 from app.core.constants import Permission as Perm
-from app.core.dependencies import default_page_size, get_current_user_id, get_role_service, has_permission
+from app.core.dependencies import (
+    get_current_user_id,
+    get_role_service,
+    has_permission,
+    page_size_param,
+)
 from app.dao.user import UserDAO
 from app.dao.user_role import UserRoleDAO
 from app.schemas.common import BindStats
 from app.schemas.response import Page, Response
-from app.schemas.role import RoleBindIn, RoleCreate, RoleIdsIn, RoleOut, RolesBindIn, RoleUpdate
+from app.schemas.role import RoleBindIn, RoleCreate, RoleIdsIn, RoleOut, RoleUpdate
 from app.schemas.user import UserOut
 from app.services import RoleService
 
@@ -53,8 +56,7 @@ async def create_role(
 )
 async def update_role(
     role_id: int,
-    version: int = Query(..., description="乐观锁版本号"),
-    data: RoleUpdate | None = None,
+    data: RoleUpdate,
     svc: RoleService = Depends(get_role_service),
     actor_id: int = Depends(get_current_user_id),
 ) -> Response[None]:
@@ -70,7 +72,7 @@ async def update_role(
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.update_role(role_id, version, data or RoleUpdate(), actor_id=actor_id)
+    await svc.update_role(role_id, data, actor_id=actor_id)
     return Response[None](data=None)
 
 
@@ -83,7 +85,7 @@ async def update_role(
 async def list_users_of_role(
     role_id: int,
     page: int = Query(1, ge=1),
-    page_size: int = Depends(default_page_size),
+    page_size: int = Depends(page_size_param),
     ur_dao: UserRoleDAO = Depends(),
     user_dao: UserDAO = Depends(),
 ) -> Response[Page[UserOut]]:
@@ -146,7 +148,7 @@ async def get_role(
 )
 async def list_roles(
     page: int = Query(1, ge=1),
-    page_size: int = Depends(default_page_size),
+    page_size: int = Depends(page_size_param),
     svc: RoleService = Depends(get_role_service),
 ) -> Response[Page[RoleOut]]:
     """分页查询角色列表。
@@ -215,84 +217,30 @@ async def delete_role(
     return Response[None](data=None)
 
 
-@router.get(
-    "/all",
-    dependencies=[Depends(has_permission(Perm.ROLE_LIST_ALL))],
-    response_model=Response[Page[RoleOut]],
-    summary="获取所有角色列表（可包含软删/禁用）",
-)
-async def list_all_roles(
-    include_deleted: bool = Query(True),
-    include_disabled: bool = Query(True),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
-    svc: RoleService = Depends(get_role_service),
-) -> Response[Page[RoleOut]]:
-    """获取所有角色列表（可包含软删/禁用）。
-
-    Args:
-        include_deleted (bool): 是否包含软删。
-        include_disabled (bool): 是否包含禁用。
-        page (int): 页码。
-        page_size (int): 每页数量。
-        svc (RoleService): 角色服务依赖。
-
-    Returns:
-        Response[Page[RoleOut]]: 统一响应包装的分页角色列表。
-    """
-    data = await svc.list_all_roles(
-        include_deleted=include_deleted, include_disabled=include_disabled, page=page, page_size=page_size
-    )
-    return Response[Page[RoleOut]](data=data)
-
-
 @router.post(
     "/delete",
     dependencies=[Depends(has_permission(Perm.ROLE_BULK_DELETE))],
     response_model=Response[None],
-    summary="批量删除角色（软删除）",
+    summary="批量删除角色（支持 hard）",
 )
 async def delete_roles(
     body: RoleIdsIn,
+    hard: bool = Query(False),
     svc: RoleService = Depends(get_role_service),
     actor_id: int = Depends(get_current_user_id),
 ) -> Response[None]:
-    """批量删除角色（软删除）。
+    """批量删除角色。通过 `hard` 决定软删/硬删（默认软删）。
 
     Args:
         body (RoleIdsIn): 角色ID列表。
+        hard (bool): 是否硬删（默认软删）。
         svc (RoleService): 角色服务依赖。
         actor_id (int): 当前操作者ID。
 
     Returns:
         Response[None]: 统一响应包装的空数据。
     """
-    await svc.delete_roles(body.ids, hard=False, actor_id=actor_id)
-    return Response[None](data=None)
-
-
-@router.post(
-    "/delete/hard",
-    dependencies=[Depends(has_permission(Perm.ROLE_HARD_DELETE))],
-    response_model=Response[None],
-    summary="批量删除角色（硬删除，不可恢复）",
-)
-async def delete_roles_hard(
-    body: RoleIdsIn,
-    svc: RoleService = Depends(get_role_service),
-    actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
-    """批量删除角色（硬删除）。
-
-    Args:
-        body (RoleIdsIn): 角色ID列表。
-        svc (RoleService): 角色服务依赖。
-        actor_id (int): 当前操作者ID。
-
-    Returns:
-        Response[None]: 统一响应包装的空数据。
-    """
-    await svc.delete_roles(body.ids, hard=True, actor_id=actor_id)
+    await svc.delete_roles(body.ids, hard=hard, actor_id=actor_id)
     return Response[None](data=None)
 
 
@@ -322,31 +270,6 @@ async def bind_permissions(
 
 
 @router.post(
-    "/bind-permissions/batch",
-    dependencies=[Depends(has_permission(Perm.ROLE_BIND_PERMISSIONS_BATCH))],
-    response_model=Response[BindStats],
-    summary="为多个角色批量绑定多个权限",
-)
-async def bind_permissions_batch(
-    body: RolesBindIn,
-    svc: RoleService = Depends(get_role_service),
-    actor_id: int = Depends(get_current_user_id),
-) -> Response[BindStats]:
-    """为多个角色批量绑定多个权限。
-
-    Args:
-        body (RolesBindIn): 角色绑定权限入参。
-        svc (RoleService): 角色服务依赖。
-        actor_id (int): 当前操作者ID。
-
-    Returns:
-        Response[None]: 统一响应包装的空数据。
-    """
-    stats = await svc.bind_permissions_batch(body, actor_id=actor_id)
-    return Response[BindStats](data=stats)
-
-
-@router.post(
     "/unbind-permissions",
     dependencies=[Depends(has_permission(Perm.ROLE_UNBIND_PERMISSIONS))],
     response_model=Response[None],
@@ -368,29 +291,4 @@ async def unbind_permissions(
         Response[None]: 统一响应包装的空数据。
     """
     await svc.unbind_permissions(body, actor_id=actor_id)
-    return Response[None](data=None)
-
-
-@router.post(
-    "/unbind-permissions/batch",
-    dependencies=[Depends(has_permission(Perm.ROLE_UNBIND_PERMISSIONS_BATCH))],
-    response_model=Response[None],
-    summary="为多个角色批量移除多个权限",
-)
-async def unbind_permissions_batch(
-    body: RolesBindIn,
-    svc: RoleService = Depends(get_role_service),
-    actor_id: int = Depends(get_current_user_id),
-) -> Response[None]:
-    """为多个角色批量移除多个权限。
-
-    Args:
-        body (RolesBindIn): 角色绑定权限入参。
-        svc (RoleService): 角色服务依赖。
-        actor_id (int): 当前操作者ID。
-
-    Returns:
-        Response[None]: 统一响应包装的空数据。
-    """
-    await svc.unbind_permissions_batch(body, actor_id=actor_id)
     return Response[None](data=None)

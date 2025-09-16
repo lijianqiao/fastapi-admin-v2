@@ -6,8 +6,6 @@
 @Docs: 统一响应与分页模型
 """
 
-from __future__ import annotations
-
 from typing import TypedDict, TypeVar
 
 from pydantic import BaseModel, Field

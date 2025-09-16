@@ -6,8 +6,6 @@
 @Docs: 认证 API（登录、刷新、注销）
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -52,7 +50,7 @@ async def refresh(data: RefreshIn, svc: AuthService = Depends(get_auth_service))
     return await svc.refresh(data)
 
 
-@router.post("/logout", response_model=None, summary="注销并使历史令牌失效")
+@router.post("/logout", response_model=Response[dict], summary="注销并使历史令牌失效")
 async def logout(
     actor_id: int = Depends(get_current_user_id), svc: AuthService = Depends(get_auth_service)
 ) -> Response[dict]:

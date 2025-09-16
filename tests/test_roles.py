@@ -83,8 +83,8 @@ class TestRoles:
         role_id = create_response.json()["data"]["id"]
 
         # 更新角色
-        update_data = {"name": "已更新角色", "description": "角色已更新"}
-        response = client.put(f"/api/v1/roles/{role_id}?version=0", json=update_data, headers=auth_headers)
+        update_data = {"version": 0, "name": "已更新角色", "description": "角色已更新"}
+        response = client.put(f"/api/v1/roles/{role_id}", json=update_data, headers=auth_headers)
         assert response.status_code == 200
 
     def test_update_role_version_conflict(self, client: TestClient, auth_headers: dict[str, str]):
@@ -95,8 +95,8 @@ class TestRoles:
         role_id = create_response.json()["data"]["id"]
 
         # 使用错误的版本号更新
-        update_data = {"name": "冲突更新"}
-        response = client.put(f"/api/v1/roles/{role_id}?version=999", json=update_data, headers=auth_headers)
+        update_data = {"version": 999, "name": "冲突更新"}
+        response = client.put(f"/api/v1/roles/{role_id}", json=update_data, headers=auth_headers)
         assert response.status_code == 409
 
     def test_delete_role_soft(self, client: TestClient, auth_headers: dict[str, str]):
@@ -151,8 +151,8 @@ class TestRoles:
             response = client.post("/api/v1/roles/", json=role_data, headers=auth_headers)
             roles_to_delete.append(response.json()["data"]["id"])
 
-        # 批量硬删除
-        response = client.post("/api/v1/roles/delete/hard", json={"ids": roles_to_delete}, headers=auth_headers)
+        # 批量硬删除（统一到 delete?hard=true）
+        response = client.post("/api/v1/roles/delete?hard=true", json={"ids": roles_to_delete}, headers=auth_headers)
         assert response.status_code == 200
 
     def test_disable_roles(self, client: TestClient, auth_headers: dict[str, str]):

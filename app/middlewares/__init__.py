@@ -6,8 +6,6 @@
 @Docs: 中间件包
 """
 
-from __future__ import annotations
-
 from .request_context import RequestContextMiddleware
 
 __all__ = ["RequestContextMiddleware"]

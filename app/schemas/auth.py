@@ -6,8 +6,6 @@
 @Docs: 认证相关 Schemas（登录、刷新）
 """
 
-from __future__ import annotations
-
 from typing import TypedDict
 
 from pydantic import BaseModel, Field

@@ -85,9 +85,10 @@ class TestRolesPermissions:
         perm_response = client.post("/api/v1/permissions/", json=permission_data, headers=auth_headers)
         perm_id = perm_response.json()["data"]["id"]
 
-        # 批量绑定权限
-        bind_data = {"role_ids": [role1_id, role2_id], "permission_ids": [perm_id]}
-        response = client.post("/api/v1/roles/bind-permissions/batch", json=bind_data, headers=auth_headers)
+        # 批量绑定权限（改为循环调用单个绑定端点）
+        for rid in [role1_id, role2_id]:
+            bind_data = {"role_id": rid, "target_ids": [perm_id]}
+            response = client.post("/api/v1/roles/bind-permissions", json=bind_data, headers=auth_headers)
         assert response.status_code == 200
 
     def test_unbind_permissions_success(self, client: TestClient, auth_headers: dict[str, str]):
@@ -137,13 +138,15 @@ class TestRolesPermissions:
         perm_response = client.post("/api/v1/permissions/", json=permission_data, headers=auth_headers)
         perm_id = perm_response.json()["data"]["id"]
 
-        # 先批量绑定
-        bind_data = {"role_ids": [role1_id, role2_id], "permission_ids": [perm_id]}
-        client.post("/api/v1/roles/bind-permissions/batch", json=bind_data, headers=auth_headers)
+        # 先绑定（改为循环调用单个绑定端点）
+        for rid in [role1_id, role2_id]:
+            bind_data = {"role_id": rid, "target_ids": [perm_id]}
+            client.post("/api/v1/roles/bind-permissions", json=bind_data, headers=auth_headers)
 
-        # 批量解绑权限
-        unbind_data = {"role_ids": [role1_id, role2_id], "permission_ids": [perm_id]}
-        response = client.post("/api/v1/roles/unbind-permissions/batch", json=unbind_data, headers=auth_headers)
+        # 批量解绑（改为循环调用单个解绑端点）
+        for rid in [role1_id, role2_id]:
+            unbind_data = {"role_id": rid, "target_ids": [perm_id]}
+            response = client.post("/api/v1/roles/unbind-permissions", json=unbind_data, headers=auth_headers)
         assert response.status_code == 200
 
     def test_bind_permissions_without_auth(self, client: TestClient):
