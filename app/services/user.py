@@ -10,7 +10,7 @@ from tortoise.exceptions import IntegrityError
 
 from app.core.constants import Permission as Perm
 from app.core.exceptions import conflict, not_found
-from app.core.permissions import bump_perm_version
+from app.core.permissions import bump_perm_version, invalidate_user_permissions
 from app.core.security import hash_password, verify_password
 from app.dao.system_config import SystemConfigDAO
 from app.dao.user import UserDAO
@@ -29,6 +29,7 @@ from app.schemas.user import (
 )
 from app.services.base import BaseService
 from app.utils.audit import log_operation
+from app.utils.cache_manager import get_cache_manager
 from app.utils.password_policy import validate_password
 
 
@@ -348,6 +349,13 @@ class UserService(BaseService):
         affected = await self.dao.update_with_version(user.id, version=user.version, data={"password_hash": hashed})
         if affected == 0:
             raise conflict("更新冲突或记录不存在")
+        # 成功修改密码后：使旧令牌全部失效，并失效该用户权限缓存
+        cm = get_cache_manager()
+        await cm.bump_version(f"auth:ver:u:{user.id}")
+        try:
+            await invalidate_user_permissions(user.id)
+        except Exception:
+            pass
 
     @log_operation(action=Perm.USER_UPDATE)
     async def self_change_password(
@@ -383,6 +391,13 @@ class UserService(BaseService):
             )
             if affected == 0:
                 raise conflict("更新冲突或记录不存在")
+        # 成功修改密码后：使旧令牌全部失效，并失效该用户权限缓存
+        cm = get_cache_manager()
+        await cm.bump_version(f"auth:ver:u:{user_id}")
+        try:
+            await invalidate_user_permissions(user_id)
+        except Exception:
+            pass
 
     @log_operation(action=Perm.USER_UNLOCK)
     async def unlock_user(self, user_id: int, *, actor_id: int | None = None) -> None:

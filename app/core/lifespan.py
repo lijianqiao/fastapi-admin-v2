@@ -20,6 +20,7 @@ from app.core.permissions import bump_perm_version
 from app.middlewares.force_https import ForceHTTPSMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.middlewares.request_context import RequestContextMiddleware
+from app.middlewares.security_headers import SecurityHeadersMiddleware
 from app.utils.cache import close_redis
 from app.utils.logger import logger, setup_logger
 
@@ -55,6 +56,8 @@ def setup_middlewares(app: FastAPI) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # 安全响应头（在 CORS 之后、限流之前）
+    app.add_middleware(SecurityHeadersMiddleware)
     # 限流中间件（在日志与CORS之后、路由之前）
     app.add_middleware(RateLimitMiddleware)
     # 指标中间件

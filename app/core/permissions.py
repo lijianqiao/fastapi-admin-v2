@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from typing import Final
 
 from app.dao.permission import PermissionDAO
+from app.dao.role import RoleDAO
 from app.dao.role_permission import RolePermissionDAO
 from app.dao.user_role import UserRoleDAO
 from app.utils.cache_manager import CacheManager, get_cache_manager
@@ -69,6 +70,14 @@ async def _load_user_permissions_from_db(user_id: int) -> set[str]:
     role_ids = [ur.role_id for ur in user_roles]  # type: ignore[attr-defined]
     if not role_ids:
         return set()
+    # super_admin 直通：若用户拥有超级管理员角色，直接放行
+    try:
+        super_role = await RoleDAO().find_by_code("super_admin")
+        if super_role and int(super_role.id) in role_ids:  # type: ignore[arg-type]
+            return {"__ALL__"}
+    except Exception:
+        # 无法判断时忽略直通，走常规权限计算
+        pass
     # 角色-权限关系
     rels = await role_perm_dao.list_by_role_ids(role_ids)
     perm_ids = [rp.permission_id for rp in rels]  # type: ignore[attr-defined]
