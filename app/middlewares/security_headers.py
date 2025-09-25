@@ -23,19 +23,46 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
-        # 简化版 CSP：仅禁止内联与不受信脚本（前后端分离下通常安全）。如有前端需求可放宽/配置化。
-        # 默认允许自源脚本与样式，禁止对象、升级为 https。
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "font-src 'self' data:; "
-            "object-src 'none'; "
-            "base-uri 'self'; "
-            "frame-ancestors 'none'; "
-            "upgrade-insecure-requests"
-        )
+        # 根据路径区分 CSP：文档页需要放宽以加载 Swagger 静态资源与内联脚本
+        path = request.url.path
+        try:
+            from app.core.config import get_settings  # 延迟导入避免循环
+
+            settings = get_settings()
+            docs_prefix = f"{settings.API_PREFIX}/docs"
+            redoc_prefix = f"{settings.API_PREFIX}/redoc"
+            openapi_path = f"{settings.API_PREFIX}/openapi.json"
+        except Exception:
+            docs_prefix = "/docs"
+            redoc_prefix = "/redoc"
+            openapi_path = "/openapi.json"
+
+        if path.startswith(docs_prefix) or path.startswith(redoc_prefix) or path == openapi_path:
+            # 允许 Swagger 所需的 CDN 与内联脚本/样式
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "connect-src 'self' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://fastapi.tiangolo.com; "
+                "font-src 'self' data:; "
+                "object-src 'none'; "
+                "base-uri 'self'; "
+                "frame-ancestors 'none'"
+            )
+        else:
+            # 默认较严格策略
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; "
+                "font-src 'self' data:; "
+                "object-src 'none'; "
+                "base-uri 'self'; "
+                "frame-ancestors 'none'; "
+                "upgrade-insecure-requests"
+            )
         response.headers.setdefault("Content-Security-Policy", csp)
         # HSTS：仅对 https 生效；由上游/force https 决定是否启用 https。
         # 这里直接下发，非 https 场景浏览器会忽略。

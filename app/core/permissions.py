@@ -130,7 +130,9 @@ async def user_has_permissions(user_id: int, required: Iterable[str]) -> bool:
             # 空权限标记：单独键，避免与集合键类型冲突
             await cm.set(empty_key, "1", ttl=60)
             user_perm_set = set()
-    # 检查
+    # 检查：超级管理员标记快速通过
+    if user_perm_set and "__ALL__" in user_perm_set:
+        return True
     req_set = set(required)
     return req_set.issubset(user_perm_set or set())
 
